@@ -1,0 +1,37 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/props/grabbable.gd" id="1_grab"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_crate"]
+albedo_color = Color(0.55, 0.38, 0.2, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_crate"]
+material = SubResource("Mat_crate")
+size = Vector3(0.6, 0.6, 0.6)
+
+[sub_resource type="BoxShape3D" id="Shape_crate"]
+size = Vector3(0.6, 0.6, 0.6)
+
+[sub_resource type="SceneReplicationConfig" id="SRC_crate"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+
+[node name="Crate" type="RigidBody3D" groups=["grabbable"]]
+collision_layer = 4
+collision_mask = 7
+mass = 5.0
+script = ExtResource("1_grab")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_crate")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_crate")
+
+[node name="Sync" type="MultiplayerSynchronizer" parent="."]
+root_path = NodePath("..")
+replication_config = SubResource("SRC_crate")

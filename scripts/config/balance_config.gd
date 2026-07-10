@@ -9,9 +9,21 @@ extends Resource
 
 @export_group("Player")
 @export var player_move_speed := 6.0
+@export var player_sprint_multiplier := 1.6
 @export var player_accel := 40.0
 @export var player_jump_velocity := 4.5
-@export var player_ragdoll_recover_seconds := 2.0  # Phase 1
+@export var player_push_force := 8.0
+@export var player_ragdoll_recover_seconds := 2.0
+@export var ragdoll_impact_speed := 7.0  # sudden decel above this = comedy ragdoll
+@export var mouse_sensitivity := 0.003
+
+@export_group("Grabbing")
+@export var grab_spring := 40.0
+@export var grab_damping := 6.0
+@export var grab_break_distance := 3.5
+
+@export_group("Camcorder")
+@export var camera_battery_seconds := 90.0
 
 @export_group("Tornado")  # Phase 3
 @export var tornado_outer_radius := 200.0

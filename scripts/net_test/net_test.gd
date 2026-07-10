@@ -1,9 +1,9 @@
 extends Node3D
-## Phase 0 debug scene: capsules on a flat plane, synced through the active
-## multiplayer peer (Steam or local ENet). Server spawns/despawns players;
-## the MultiplayerSpawner replicates them to clients.
+## Phase 0/1 debug playground: players on a flat plane with grabbable props,
+## synced through the active multiplayer peer (Steam or local ENet). The
+## server spawns/despawns players; the MultiplayerSpawner replicates them.
 
-const PLAYER_SCENE := preload("res://scenes/net_test/net_player.tscn")
+const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
 
 @onready var players: Node3D = $Players
 @onready var status_label: Label = $UI/StatusLabel
@@ -31,13 +31,22 @@ func _status_text() -> String:
 	else:
 		lines.append("OFFLINE (scene opened directly, no session)")
 	lines.append("Players connected: %d" % (multiplayer.get_peers().size() + 1))
-	lines.append("WASD move   SPACE jump   ESC leave")
+	lines.append("WASD move  SHIFT sprint  SPACE jump  E grab  hold C film")
+	lines.append("X flop  hold Q emotes  ESC free mouse / leave")
 	return "\n".join(lines)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		# Game returns us to the menu via SteamManager.session_ended.
-		SteamManager.leave_session()
+		# First ESC frees the mouse, second ESC leaves the session
+		# (Game returns everyone to the menu via SteamManager.session_ended).
+		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		else:
+			SteamManager.leave_session()
+		return
+	if event is InputEventMouseButton and event.pressed \
+			and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
@@ -59,5 +68,5 @@ func _spawn(id: int) -> void:
 		return
 	var player := PLAYER_SCENE.instantiate()
 	player.name = str(id)
-	player.position = Vector3(2.0 * players.get_child_count() - 3.0, 1.5, 0.0)
+	player.position = Vector3(2.0 * players.get_child_count() - 3.0, 0.2, 0.0)
 	players.add_child(player)

@@ -1,0 +1,226 @@
+[gd_scene load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player.gd" id="1_pl"]
+[ext_resource type="Script" path="res://scripts/player/player_ragdoll.gd" id="2_rag"]
+[ext_resource type="Script" path="res://scripts/player/player_camera.gd" id="3_cam"]
+[ext_resource type="Script" path="res://scripts/player/player_hud.gd" id="4_hud"]
+[ext_resource type="AudioStream" path="res://assets/audio/scream.wav" id="5_scream"]
+[ext_resource type="AudioStream" path="res://assets/audio/bonk.wav" id="6_bonk"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape_body"]
+radius = 0.35
+height = 1.3
+
+[sub_resource type="BoxMesh" id="BoxMesh_torso"]
+size = Vector3(0.5, 0.6, 0.3)
+
+[sub_resource type="BoxShape3D" id="BoxShape_torso"]
+size = Vector3(0.5, 0.6, 0.3)
+
+[sub_resource type="SphereMesh" id="SphereMesh_head"]
+radius = 0.24
+height = 0.48
+
+[sub_resource type="SphereShape3D" id="SphereShape_head"]
+radius = 0.24
+
+[sub_resource type="BoxMesh" id="BoxMesh_arm"]
+size = Vector3(0.16, 0.55, 0.16)
+
+[sub_resource type="BoxShape3D" id="BoxShape_arm"]
+size = Vector3(0.16, 0.55, 0.16)
+
+[sub_resource type="BoxMesh" id="BoxMesh_leg"]
+size = Vector3(0.19, 0.6, 0.19)
+
+[sub_resource type="BoxShape3D" id="BoxShape_leg"]
+size = Vector3(0.19, 0.6, 0.19)
+
+[sub_resource type="SceneReplicationConfig" id="SRC_root"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:state")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath(".:filming")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+
+[sub_resource type="SceneReplicationConfig" id="SRC_ragdoll"]
+properties/0/path = NodePath("Torso:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath("Torso:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath("Head:position")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+properties/3/path = NodePath("Head:rotation")
+properties/3/spawn = true
+properties/3/replication_mode = 1
+properties/4/path = NodePath("ArmL:position")
+properties/4/spawn = true
+properties/4/replication_mode = 1
+properties/5/path = NodePath("ArmL:rotation")
+properties/5/spawn = true
+properties/5/replication_mode = 1
+properties/6/path = NodePath("ArmR:position")
+properties/6/spawn = true
+properties/6/replication_mode = 1
+properties/7/path = NodePath("ArmR:rotation")
+properties/7/spawn = true
+properties/7/replication_mode = 1
+properties/8/path = NodePath("LegL:position")
+properties/8/spawn = true
+properties/8/replication_mode = 1
+properties/9/path = NodePath("LegL:rotation")
+properties/9/spawn = true
+properties/9/replication_mode = 1
+properties/10/path = NodePath("LegR:position")
+properties/10/spawn = true
+properties/10/replication_mode = 1
+properties/11/path = NodePath("LegR:rotation")
+properties/11/spawn = true
+properties/11/replication_mode = 1
+
+[node name="Player" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 7
+script = ExtResource("1_pl")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+shape = SubResource("CapsuleShape_body")
+
+[node name="Ragdoll" type="Node3D" parent="."]
+script = ExtResource("2_rag")
+
+[node name="Torso" type="RigidBody3D" parent="Ragdoll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
+mass = 3.0
+
+[node name="Mesh" type="MeshInstance3D" parent="Ragdoll/Torso"]
+mesh = SubResource("BoxMesh_torso")
+
+[node name="Shape" type="CollisionShape3D" parent="Ragdoll/Torso"]
+shape = SubResource("BoxShape_torso")
+
+[node name="Head" type="RigidBody3D" parent="Ragdoll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.68, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Ragdoll/Head"]
+mesh = SubResource("SphereMesh_head")
+
+[node name="Shape" type="CollisionShape3D" parent="Ragdoll/Head"]
+shape = SubResource("SphereShape_head")
+
+[node name="ArmL" type="RigidBody3D" parent="Ragdoll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 1.18, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Ragdoll/ArmL"]
+mesh = SubResource("BoxMesh_arm")
+
+[node name="Shape" type="CollisionShape3D" parent="Ragdoll/ArmL"]
+shape = SubResource("BoxShape_arm")
+
+[node name="ArmR" type="RigidBody3D" parent="Ragdoll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.35, 1.18, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Ragdoll/ArmR"]
+mesh = SubResource("BoxMesh_arm")
+
+[node name="Shape" type="CollisionShape3D" parent="Ragdoll/ArmR"]
+shape = SubResource("BoxShape_arm")
+
+[node name="LegL" type="RigidBody3D" parent="Ragdoll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.14, 0.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Ragdoll/LegL"]
+mesh = SubResource("BoxMesh_leg")
+
+[node name="Shape" type="CollisionShape3D" parent="Ragdoll/LegL"]
+shape = SubResource("BoxShape_leg")
+
+[node name="LegR" type="RigidBody3D" parent="Ragdoll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.14, 0.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Ragdoll/LegR"]
+mesh = SubResource("BoxMesh_leg")
+
+[node name="Shape" type="CollisionShape3D" parent="Ragdoll/LegR"]
+shape = SubResource("BoxShape_leg")
+
+[node name="JHead" type="PinJoint3D" parent="Ragdoll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+node_a = NodePath("../Torso")
+node_b = NodePath("../Head")
+
+[node name="JArmL" type="PinJoint3D" parent="Ragdoll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 1.42, 0)
+node_a = NodePath("../Torso")
+node_b = NodePath("../ArmL")
+
+[node name="JArmR" type="PinJoint3D" parent="Ragdoll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.35, 1.42, 0)
+node_a = NodePath("../Torso")
+node_b = NodePath("../ArmR")
+
+[node name="JLegL" type="PinJoint3D" parent="Ragdoll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.14, 0.82, 0)
+node_a = NodePath("../Torso")
+node_b = NodePath("../LegL")
+
+[node name="JLegR" type="PinJoint3D" parent="Ragdoll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.14, 0.82, 0)
+node_a = NodePath("../Torso")
+node_b = NodePath("../LegR")
+
+[node name="RagdollSync" type="MultiplayerSynchronizer" parent="Ragdoll"]
+root_path = NodePath("..")
+replication_interval = 0.05
+replication_config = SubResource("SRC_ragdoll")
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("3_cam")
+
+[node name="SpringArm" type="SpringArm3D" parent="CameraRig"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+spring_length = 4.0
+
+[node name="Camera" type="Camera3D" parent="CameraRig/SpringArm"]
+
+[node name="NameTag" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.05, 0)
+billboard = 1
+text = "?"
+
+[node name="EmoteTag" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
+billboard = 1
+modulate = Color(1, 0.9, 0.3, 1)
+font_size = 56
+
+[node name="FilmTag" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.28, 0)
+visible = false
+billboard = 1
+modulate = Color(1, 0.25, 0.2, 1)
+text = "[REC ●]"
+
+[node name="ScreamAudio" type="AudioStreamPlayer3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+stream = ExtResource("5_scream")
+volume_db = 6.0
+
+[node name="BonkAudio" type="AudioStreamPlayer3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+stream = ExtResource("6_bonk")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("4_hud")
+
+[node name="Sync" type="MultiplayerSynchronizer" parent="."]
+root_path = NodePath("..")
+replication_config = SubResource("SRC_root")

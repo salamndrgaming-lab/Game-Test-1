@@ -7,6 +7,7 @@ extends Control
 @onready var ip_edit: LineEdit = %IpEdit
 
 func _ready() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE  # gameplay scenes capture it
 	%HostSteamButton.pressed.connect(_on_host_steam)
 	%JoinSteamButton.pressed.connect(_on_join_steam)
 	%HostLocalButton.pressed.connect(_on_host_local)
