@@ -31,8 +31,9 @@ func _status_text() -> String:
 	else:
 		lines.append("OFFLINE (scene opened directly, no session)")
 	lines.append("Players connected: %d" % (multiplayer.get_peers().size() + 1))
-	lines.append("WASD move  SHIFT sprint  SPACE jump  E grab  hold C film")
+	lines.append("WASD move  SHIFT sprint  SPACE jump  E grab/enter van  hold C film")
 	lines.append("X flop  hold Q emotes  ESC free mouse / leave")
+	lines.append("Van: WASD drive  SHIFT brake  H horn  R radio  G glovebox  E exit")
 	return "\n".join(lines)
 
 func _unhandled_input(event: InputEvent) -> void:

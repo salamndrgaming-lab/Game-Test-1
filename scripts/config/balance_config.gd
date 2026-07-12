@@ -36,6 +36,14 @@ extends Resource
 @export_group("Van")  # Phase 2
 @export var van_engine_torque := 250.0
 @export var van_max_hp := 100.0
+@export var van_com_height := 0.9  # raised center of mass = top-heavy on purpose
+@export var van_max_steer := 0.55
+@export var van_steer_speed := 2.5
+@export var van_brake_force := 35.0
+@export var van_idle_brake := 3.0
+@export var van_impact_min_decel := 5.0  # per-tick velocity loss before damage
+@export var van_impact_damage_scale := 3.0
+@export var van_exit_ragdoll_speed := 6.0  # bail out faster than this = ragdoll
 
 @export_group("Economy")  # Phase 3/5
 @export var footage_base_points_per_second := 10.0

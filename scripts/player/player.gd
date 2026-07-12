@@ -1,11 +1,12 @@
 class_name Player
 extends CharacterBody3D
-## Phase 1 character. Host-authoritative: the owning client streams input to
-## the server, the server simulates movement / ragdoll / grabbing, and
-## MultiplayerSynchronizers send transforms + state back to everyone.
+## Phase 1/2 character. Host-authoritative: the owning client streams input to
+## the server, the server simulates movement / ragdoll / grabbing / seating,
+## and MultiplayerSynchronizers send transforms + state back to everyone.
 ## The node's name IS the owning peer id (set at spawn by the level script).
+## Grabbing lives in the Grabber child node (player_grab.gd).
 
-enum PState { NORMAL, RAGDOLL }
+enum PState { NORMAL, RAGDOLL, SEATED }
 
 const EMOTE_POINT := 0
 const EMOTE_THUMBS := 1
@@ -28,7 +29,7 @@ var input_yaw := 0.0
 var sprinting := false
 var jump_queued := false
 var facing := 0.0
-var grabbed: RigidBody3D = null
+var van: Node = null  # host-side: the van we're seated in
 
 var _recover_timer := 0.0
 var _prev_state: int = PState.NORMAL
@@ -55,13 +56,13 @@ func _ready() -> void:
 	film_tag.visible = false
 
 func _physics_process(delta: float) -> void:
-	if is_local() and state == PState.NORMAL:
+	if is_local() and state != PState.RAGDOLL:
 		_gather_input()
 	if multiplayer.is_server():
 		_host_update(delta)
 
 func _process(_delta: float) -> void:
-	film_tag.visible = filming and state == PState.NORMAL
+	film_tag.visible = filming and state != PState.RAGDOLL
 	if state != _prev_state:
 		if state == PState.RAGDOLL:
 			$BonkAudio.play()
@@ -78,21 +79,53 @@ func _gather_input() -> void:
 		input_move = move
 		input_yaw = yaw
 		sprinting = sprint
-		if jump:
+		if jump and state == PState.NORMAL:
 			jump_queued = true
 	else:
 		# Every tick, unreliable: lost packets are corrected next tick.
 		_submit_input.rpc_id(1, move, yaw, sprint, jump)
 	if Input.is_action_just_pressed("flop"):
 		if multiplayer.is_server():
-			_enter_ragdoll()
+			_flop()
 		else:
 			_request_flop.rpc_id(1)
 	if Input.is_action_just_pressed("interact"):
 		if multiplayer.is_server():
-			_toggle_grab()
+			_do_interact()
 		else:
-			_request_grab.rpc_id(1)
+			_request_interact.rpc_id(1)
+	if state == PState.SEATED:
+		_gather_van_input()
+
+func _gather_van_input() -> void:
+	var v := _my_van()
+	if v == null:
+		return
+	if Input.is_action_just_pressed("horn"):
+		if multiplayer.is_server():
+			v.horn_from(peer_id())
+		else:
+			v._request_horn.rpc_id(1)
+	if Input.is_action_just_pressed("radio"):
+		if multiplayer.is_server():
+			v.radio_from(peer_id())
+		else:
+			v._request_radio.rpc_id(1)
+	if Input.is_action_just_pressed("glovebox"):
+		if multiplayer.is_server():
+			v.glovebox_from(peer_id())
+		else:
+			v._request_glovebox.rpc_id(1)
+
+## On the host `van` is authoritative; clients find their van via the synced
+## seats dictionary.
+func _my_van() -> Node:
+	if multiplayer.is_server():
+		return van
+	for v in get_tree().get_nodes_in_group("vans"):
+		if v.seats.values().has(peer_id()):
+			return v
+	return null
 
 ## Called by the local HUD only.
 func set_filming(active: bool) -> void:
@@ -120,18 +153,18 @@ func _submit_input(move: Vector2, yaw: float, sprint: bool, jump: bool) -> void:
 	input_move = move.limit_length(1.0)
 	input_yaw = yaw
 	sprinting = sprint
-	if jump:
+	if jump and state == PState.NORMAL:
 		jump_queued = true
 
 @rpc("any_peer", "call_remote", "reliable")
 func _request_flop() -> void:
 	if _sender_ok():
-		_enter_ragdoll()
+		_flop()
 
 @rpc("any_peer", "call_remote", "reliable")
-func _request_grab() -> void:
+func _request_interact() -> void:
 	if _sender_ok():
-		_toggle_grab()
+		_do_interact()
 
 @rpc("any_peer", "call_remote", "reliable")
 func _request_film(active: bool) -> void:
@@ -142,6 +175,39 @@ func _request_film(active: bool) -> void:
 func _request_emote(id: int) -> void:
 	if _sender_ok():
 		_handle_emote(id)
+
+## Host -> the passenger who opened the glovebox: fresh camcorder battery.
+@rpc("authority", "call_remote", "reliable")
+func _refill_battery() -> void:
+	$HUD.battery = 1.0
+
+# --- Host-side actions --------------------------------------------------------------
+
+func _flop() -> void:
+	# Flopping inside a moving van ejects you at speed. Working as intended.
+	_enter_ragdoll(Vector3.UP * 2.0)
+
+func _do_interact() -> void:
+	if state == PState.SEATED and van != null:
+		van.exit_player(self)
+		return
+	if state != PState.NORMAL:
+		return
+	var v := _nearest_van(4.0)
+	if v != null and v.enter_player(self):
+		$Grabber.drop()
+		return
+	$Grabber.toggle()
+
+func _nearest_van(max_d: float) -> Node:
+	var best: Node = null
+	var best_d := max_d
+	for v in get_tree().get_nodes_in_group("vans"):
+		var d: float = v.global_position.distance_to(global_position)
+		if d < best_d:
+			best_d = d
+			best = v
+	return best
 
 # --- Emotes (host validates, broadcasts to all) ----------------------------------
 
@@ -169,9 +235,11 @@ func _host_update(delta: float) -> void:
 	match state:
 		PState.NORMAL:
 			_simulate_move(delta)
-			_update_grab(delta)
+			$Grabber.update(delta)
 		PState.RAGDOLL:
 			_ragdoll_follow(delta)
+		PState.SEATED:
+			pass  # The van positions us (van.gd _update_seats).
 
 func _simulate_move(delta: float) -> void:
 	var bal: BalanceConfig = Game.balance
@@ -194,7 +262,7 @@ func _simulate_move(delta: float) -> void:
 	for i in get_slide_collision_count():
 		var other := get_slide_collision(i).get_collider()
 		if other is Player and other.state == PState.NORMAL:
-			other.velocity += -get_slide_collision(i).get_normal() * Game.balance.player_push_force * delta
+			other.velocity += -get_slide_collision(i).get_normal() * bal.player_push_force * delta
 	# Big sudden deceleration (wall sprint, hard landing) -> comedy ragdoll.
 	if (velocity - pre_vel).length() > bal.ragdoll_impact_speed:
 		_enter_ragdoll(pre_vel)
@@ -202,10 +270,16 @@ func _simulate_move(delta: float) -> void:
 func _enter_ragdoll(initial_velocity: Vector3 = Vector3.ZERO) -> void:
 	if state == PState.RAGDOLL:
 		return
+	var extra := Vector3.ZERO
+	if state == PState.SEATED and van != null:
+		extra = van.linear_velocity
+		van.exit_player(self, true)
 	state = PState.RAGDOLL
 	_recover_timer = 0.0
-	_drop_grab()
-	var vel := initial_velocity if initial_velocity != Vector3.ZERO else velocity
+	$Grabber.drop()
+	var vel := initial_velocity + extra
+	if vel == Vector3.ZERO:
+		vel = velocity
 	velocity = Vector3.ZERO
 	body_shape.set_deferred("disabled", true)
 	ragdoll.activate(vel)
@@ -231,37 +305,3 @@ func _exit_ragdoll() -> void:
 	body_shape.set_deferred("disabled", false)
 	velocity = Vector3.ZERO
 	state = PState.NORMAL
-
-# --- Grabbing (host only): deliberately floppy spring, HL2 style ------------------
-
-func _hold_point() -> Vector3:
-	return global_position + Basis(Vector3.UP, input_yaw) * Vector3(0.0, 1.2, -1.4)
-
-func _toggle_grab() -> void:
-	if grabbed != null:
-		_drop_grab()
-		return
-	var best: RigidBody3D = null
-	var best_d := 2.6
-	for node in get_tree().get_nodes_in_group("grabbable"):
-		if node is RigidBody3D:
-			var d: float = node.global_position.distance_to(_hold_point())
-			if d < best_d:
-				best_d = d
-				best = node
-	grabbed = best
-
-func _update_grab(_delta: float) -> void:
-	if grabbed == null:
-		return
-	if not is_instance_valid(grabbed) \
-			or grabbed.global_position.distance_to(_hold_point()) > Game.balance.grab_break_distance:
-		_drop_grab()
-		return
-	# Two players grabbing one prop apply independent springs and fight over it.
-	var to := _hold_point() - grabbed.global_position
-	var force := (to * Game.balance.grab_spring - grabbed.linear_velocity * Game.balance.grab_damping)
-	grabbed.apply_central_force(force * grabbed.mass)
-
-func _drop_grab() -> void:
-	grabbed = null

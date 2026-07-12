@@ -37,8 +37,9 @@ func _process(delta: float) -> void:
 # --- Camcorder ----------------------------------------------------------------
 
 func _update_film(delta: float) -> void:
+	# Filming allowed standing or seated (rear seats film out the doorway).
 	var want := Input.is_action_pressed("film") and battery > 0.0 \
-			and player.state == player.PState.NORMAL and not wheel_open
+			and player.state != player.PState.RAGDOLL and not wheel_open
 	if want != player.filming:
 		player.set_filming(want)
 	if player.filming:

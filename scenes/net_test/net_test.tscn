@@ -1,8 +1,9 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/net_test/net_test.gd" id="1_nt"]
 [ext_resource type="PackedScene" path="res://scenes/props/traffic_cone.tscn" id="2_cone"]
 [ext_resource type="PackedScene" path="res://scenes/props/crate.tscn" id="3_crate"]
+[ext_resource type="PackedScene" path="res://scenes/van/van.tscn" id="4_van"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_ground"]
 size = Vector3(100, 1, 100)
@@ -53,6 +54,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.5, 3)
 
 [node name="Crate2" parent="Props" instance=ExtResource("3_crate")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0.5, 4)
+
+[node name="Van" parent="." instance=ExtResource("4_van")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.1, -6)
 
 [node name="Players" type="Node3D" parent="."]
 

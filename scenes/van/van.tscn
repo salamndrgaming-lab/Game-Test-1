@@ -1,0 +1,256 @@
+[gd_scene load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://scripts/van/van.gd" id="1_van"]
+[ext_resource type="Script" path="res://scripts/props/grabbable.gd" id="2_grab"]
+[ext_resource type="AudioStream" path="res://assets/audio/engine.wav" id="3_engine"]
+[ext_resource type="AudioStream" path="res://assets/audio/horn.wav" id="4_horn"]
+[ext_resource type="AudioStream" path="res://assets/audio/radio.wav" id="5_radio"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+size = Vector3(2, 2, 4.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape_body"]
+size = Vector3(2, 2, 4.6)
+
+[sub_resource type="StandardMaterial3D" id="Mat_glass"]
+albedo_color = Color(0.15, 0.2, 0.28, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_windshield"]
+material = SubResource("Mat_glass")
+size = Vector3(1.9, 0.7, 0.1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_dark"]
+albedo_color = Color(0.16, 0.16, 0.18, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_rack"]
+material = SubResource("Mat_dark")
+size = Vector3(1.7, 0.12, 3)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_wheel"]
+material = SubResource("Mat_dark")
+top_radius = 0.42
+bottom_radius = 0.42
+height = 0.24
+
+[sub_resource type="StandardMaterial3D" id="Mat_door"]
+albedo_color = Color(0.6, 0.62, 0.68, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_door"]
+material = SubResource("Mat_door")
+size = Vector3(0.06, 1, 0.9)
+
+[sub_resource type="BoxShape3D" id="BoxShape_door"]
+size = Vector3(0.06, 1, 0.9)
+
+[sub_resource type="ParticleProcessMaterial" id="PPM_smoke"]
+direction = Vector3(0, 1, 0)
+initial_velocity_min = 1.0
+initial_velocity_max = 2.2
+gravity = Vector3(0, 0.6, 0)
+scale_min = 0.6
+scale_max = 1.4
+color = Color(0.3, 0.3, 0.32, 0.7)
+
+[sub_resource type="BoxMesh" id="BoxMesh_smoke"]
+size = Vector3(0.18, 0.18, 0.18)
+
+[sub_resource type="SceneReplicationConfig" id="SRC_van"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath(".:linear_velocity")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+properties/3/path = NodePath(".:van_hp")
+properties/3/spawn = true
+properties/3/replication_mode = 1
+properties/4/path = NodePath(".:seats")
+properties/4/spawn = true
+properties/4/replication_mode = 1
+properties/5/path = NodePath(".:radio_on")
+properties/5/spawn = true
+properties/5/replication_mode = 1
+properties/6/path = NodePath(".:glovebox_used")
+properties/6/spawn = true
+properties/6/replication_mode = 1
+
+[sub_resource type="SceneReplicationConfig" id="SRC_door"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+
+[node name="VanRig" type="Node3D"]
+
+[node name="Chassis" type="VehicleBody3D" parent="." groups=["vans"]]
+collision_layer = 8
+collision_mask = 15
+mass = 900.0
+script = ExtResource("1_van")
+
+[node name="Body" type="MeshInstance3D" parent="Chassis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 0)
+mesh = SubResource("BoxMesh_body")
+
+[node name="Shape" type="CollisionShape3D" parent="Chassis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 0)
+shape = SubResource("BoxShape_body")
+
+[node name="Windshield" type="MeshInstance3D" parent="Chassis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.85, -2.33)
+mesh = SubResource("BoxMesh_windshield")
+
+[node name="RoofRack" type="MeshInstance3D" parent="Chassis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.42, 0)
+mesh = SubResource("BoxMesh_rack")
+
+[node name="WheelFL" type="VehicleWheel3D" parent="Chassis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.85, 0.6, -1.55)
+use_as_steering = true
+wheel_radius = 0.42
+wheel_rest_length = 0.2
+wheel_friction_slip = 3.0
+suspension_travel = 0.25
+suspension_stiffness = 45.0
+
+[node name="Mesh" type="MeshInstance3D" parent="Chassis/WheelFL"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_wheel")
+
+[node name="WheelFR" type="VehicleWheel3D" parent="Chassis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.85, 0.6, -1.55)
+use_as_steering = true
+wheel_radius = 0.42
+wheel_rest_length = 0.2
+wheel_friction_slip = 3.0
+suspension_travel = 0.25
+suspension_stiffness = 45.0
+
+[node name="Mesh" type="MeshInstance3D" parent="Chassis/WheelFR"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_wheel")
+
+[node name="WheelRL" type="VehicleWheel3D" parent="Chassis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.85, 0.6, 1.55)
+use_as_traction = true
+wheel_radius = 0.42
+wheel_rest_length = 0.2
+wheel_friction_slip = 3.0
+suspension_travel = 0.25
+suspension_stiffness = 45.0
+
+[node name="Mesh" type="MeshInstance3D" parent="Chassis/WheelRL"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_wheel")
+
+[node name="WheelRR" type="VehicleWheel3D" parent="Chassis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.85, 0.6, 1.55)
+use_as_traction = true
+wheel_radius = 0.42
+wheel_rest_length = 0.2
+wheel_friction_slip = 3.0
+suspension_travel = 0.25
+suspension_stiffness = 45.0
+
+[node name="Mesh" type="MeshInstance3D" parent="Chassis/WheelRR"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_wheel")
+
+[node name="Seats" type="Node3D" parent="Chassis"]
+
+[node name="driver" type="Marker3D" parent="Chassis/Seats"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.45, -1.3)
+
+[node name="passenger" type="Marker3D" parent="Chassis/Seats"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.45, -1.3)
+
+[node name="rear_l" type="Marker3D" parent="Chassis/Seats"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.45, 0.4)
+
+[node name="rear_r" type="Marker3D" parent="Chassis/Seats"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.45, 0.4)
+
+[node name="roof" type="Marker3D" parent="Chassis/Seats"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
+
+[node name="EngineAudio" type="AudioStreamPlayer3D" parent="Chassis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -1.9)
+stream = ExtResource("3_engine")
+volume_db = -4.0
+
+[node name="RadioAudio" type="AudioStreamPlayer3D" parent="Chassis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, -1.2)
+stream = ExtResource("5_radio")
+
+[node name="HornAudio" type="AudioStreamPlayer" parent="Chassis"]
+stream = ExtResource("4_horn")
+volume_db = 2.0
+
+[node name="Smoke" type="GPUParticles3D" parent="Chassis"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.3, -2.2)
+emitting = false
+amount = 24
+lifetime = 1.2
+process_material = SubResource("PPM_smoke")
+draw_pass_1 = SubResource("BoxMesh_smoke")
+
+[node name="Sync" type="MultiplayerSynchronizer" parent="Chassis"]
+root_path = NodePath("..")
+replication_config = SubResource("SRC_van")
+
+[node name="DoorL" type="RigidBody3D" parent="." groups=["grabbable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.06, 1.25, -1.2)
+collision_layer = 4
+collision_mask = 15
+mass = 12.0
+script = ExtResource("2_grab")
+
+[node name="Mesh" type="MeshInstance3D" parent="DoorL"]
+mesh = SubResource("BoxMesh_door")
+
+[node name="Shape" type="CollisionShape3D" parent="DoorL"]
+shape = SubResource("BoxShape_door")
+
+[node name="Sync" type="MultiplayerSynchronizer" parent="DoorL"]
+root_path = NodePath("..")
+replication_config = SubResource("SRC_door")
+
+[node name="DoorR" type="RigidBody3D" parent="." groups=["grabbable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.06, 1.25, -1.2)
+collision_layer = 4
+collision_mask = 15
+mass = 12.0
+script = ExtResource("2_grab")
+
+[node name="Mesh" type="MeshInstance3D" parent="DoorR"]
+mesh = SubResource("BoxMesh_door")
+
+[node name="Shape" type="CollisionShape3D" parent="DoorR"]
+shape = SubResource("BoxShape_door")
+
+[node name="Sync" type="MultiplayerSynchronizer" parent="DoorR"]
+root_path = NodePath("..")
+replication_config = SubResource("SRC_door")
+
+[node name="HingeL" type="HingeJoint3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 1.06, 1.25, -1.65)
+node_a = NodePath("../Chassis")
+node_b = NodePath("../DoorL")
+exclude_nodes_from_collision = false
+angular_limit/enable = true
+angular_limit/lower = -1.4
+angular_limit/upper = 1.4
+
+[node name="HingeR" type="HingeJoint3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, -1.06, 1.25, -1.65)
+node_a = NodePath("../Chassis")
+node_b = NodePath("../DoorR")
+exclude_nodes_from_collision = false
+angular_limit/enable = true
+angular_limit/lower = -1.4
+angular_limit/upper = 1.4

@@ -158,3 +158,75 @@ before Phase 2.
   filming yet (Phase 3 moves scoring host-side).
 - No character model swap hooks yet — primitives are placeholders; part
   meshes live under `Ragdoll/*/Mesh` so .glb swaps later won't touch code.
+
+---
+
+## Phase 2 — The van (2026-07-12)
+
+### What was built
+
+- **`scenes/van/van.tscn`** — VehicleBody3D chassis under a `VanRig` wrapper
+  (doors are physics *siblings*, not children — RigidBody-inside-RigidBody
+  fights the solver). Four VehicleWheel3D wheels (front steer, rear drive),
+  deliberately top-heavy via raised custom center of mass
+  (`van_com_height` in balance.tres): fine at low speed, rolls if you get
+  cocky. Host simulates; client vans freeze and receive synced transforms.
+- **Seats** — driver, passenger, 2 rear, plus a **roof slot** (the roof rack
+  is also just physically standable). E enters the nearest free seat within
+  4 m / exits; exiting above ~6 m/s ragdolls you with the van's velocity.
+  Flopping (X) or fainting while seated ejects you mid-drive. Seated players
+  are placed at seat markers each tick and follow the van.
+- **Driving** — driver's normal WASD stream doubles as throttle/steer,
+  SHIFT is the brake. No extra input plumbing needed.
+- **Doors** — two front doors on limited hinge joints with door-vs-chassis
+  collision left ON so they can only swing outward; no latch, so hard
+  acceleration and cornering flings them around. They're also grabbable.
+  The side doorway is permanently open (broke-van fiction, and rear seats
+  film out of it).
+- **Van HP** — damage from sudden decelerations (crashes). Placeholder
+  crumple: panels darken + body sags progressively; smoke particles and
+  engine sputter (random pitch dropouts) below 25%; engine dies at 0 and
+  the run continues on foot.
+- **Interactables** — H horn (any seat, non-positional = always audible
+  everywhere, as designed), R radio (front seats, cheesy synth loop for now;
+  storm chatter is Phase 4), G glovebox (passenger only, one spare camcorder
+  battery per run).
+- Balance additions: torque, steer, brake, damage scale, exit-ragdoll speed.
+
+### How to test (gate)
+
+Two instances again (Debug → Customize Run Instances → 2). The Phase 2 gate
+is the trailer shot: **pile in, drive the field, roll the van, everyone
+ragdolls out.**
+
+1. Both players E into the van (first gets driver). Drive: W/S throttle,
+   A/D steer, SHIFT brake. If steering feels inverted, tell me — the sign
+   is a coin flip until someone actually drives it.
+2. Corner hard at top speed — the van should threaten to roll, and commit
+   if you yank it. Passengers X-flop out mid-corner.
+3. Ram a crate stack / the ground hard: HP drops, panels darken; keep
+   crashing until smoke + sputter (<25%), then dead engine at 0.
+4. H spam the horn from the back seat while the driver corners. R radio on.
+   G glovebox battery as passenger after draining yours filming.
+5. One player rides the roof (5th E slot or just climb/jump on) while the
+   other drives. Film it from a rear seat with C.
+
+### Known jank / honesty section
+
+- **Still nothing executed** (no Godot binary here). On top of the usual,
+  the highest-risk hand-authored bits this phase:
+  - **Hinge axes**: door hinges use a hand-written rotated joint transform;
+    if doors swing on the wrong axis (up/down instead of outward), that
+    transform is the bug — tell me what you see and I'll flip it.
+  - **Steering/throttle sign** — pure convention guess, one-line fix.
+  - VehicleBody3D tuning is untested; per the design doc's risk note, if it
+    fights us for more than a day we switch to a raycast car.
+- Seated characters clip through the van box a bit and the camera treats
+  the van as see-through (SpringArm ignores the vehicle layer, rides above
+  the roof while seated). Placeholder-grade, revisit with art.
+- Wheels don't visually spin/steer on clients (van transform syncs, wheel
+  animation is host-side simulation state). Cosmetic; Phase 6 polish.
+- Van sync is raw transform-at-net-rate, no interpolation buffer yet —
+  fine on loopback, will stutter over real Steam P2P; noted for Phase 4/6.
+- Riding the roof unseated (standing on the moving chassis) is physically
+  possible but janky — the roof *seat slot* is the reliable option.

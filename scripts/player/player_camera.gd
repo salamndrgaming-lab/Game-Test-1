@@ -29,3 +29,8 @@ func _process(delta: float) -> void:
 	arm.rotation = Vector3(pitch, 0.0, 0.0)
 	# Slight zoom while filming sells the camcorder.
 	camera.fov = lerpf(camera.fov, 50.0 if player.filming else 75.0, 8.0 * delta)
+	# Seated: rise above the van roof for an exterior chase cam (the arm
+	# ignores the vehicle layer, so without this you'd stare at roof interior).
+	var seated: bool = player.state == player.PState.SEATED
+	arm.position.y = lerpf(arm.position.y, 3.0 if seated else 1.6, 6.0 * delta)
+	arm.spring_length = lerpf(arm.spring_length, 6.5 if seated else 4.0, 6.0 * delta)

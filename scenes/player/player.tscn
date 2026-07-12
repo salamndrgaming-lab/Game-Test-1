@@ -1,6 +1,7 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_pl"]
+[ext_resource type="Script" path="res://scripts/player/player_grab.gd" id="7_grab"]
 [ext_resource type="Script" path="res://scripts/player/player_ragdoll.gd" id="2_rag"]
 [ext_resource type="Script" path="res://scripts/player/player_camera.gd" id="3_cam"]
 [ext_resource type="Script" path="res://scripts/player/player_hud.gd" id="4_hud"]
@@ -188,6 +189,7 @@ script = ExtResource("3_cam")
 [node name="SpringArm" type="SpringArm3D" parent="CameraRig"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
 spring_length = 4.0
+collision_mask = 1
 
 [node name="Camera" type="Camera3D" parent="CameraRig/SpringArm"]
 
@@ -217,6 +219,9 @@ volume_db = 6.0
 [node name="BonkAudio" type="AudioStreamPlayer3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 stream = ExtResource("6_bonk")
+
+[node name="Grabber" type="Node" parent="."]
+script = ExtResource("7_grab")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("4_hud")
