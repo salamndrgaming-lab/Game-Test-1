@@ -466,3 +466,32 @@ The Phase 5 gate is the full session loop, two instances (4 ideally):
   a save file — harmless because clients get host-synced values anyway.
 - The pause menu doesn't block player movement while open (mouse-look
   stops, WASD doesn't). Design-adjacent; revisit if it annoys.
+
+---
+
+## Static review pass #3 (2026-07-13, post-Phase 5)
+
+Focused on the Phase 5 additions and their interactions with everything
+older. Fixed:
+
+1. **Winch couldn't tow the van** — E-interact boards any van within 4 m,
+   which always shadowed the (shorter-range) winch grab, so the winch's
+   headline feature was unreachable. With the winch owned, E on a *dead*
+   van now hooks the tow spring instead of boarding it. Towing downed
+   friends was unaffected (players aren't vans).
+2. **Emote wheel vs pause menu** — closing the wheel unconditionally
+   recaptured the mouse, so opening it over the pause menu ate the cursor
+   and made Resume unclickable. The wheel now leaves the cursor alone
+   while the pause menu is open (the shop already self-heals the same
+   situation).
+
+Checked and fine: RPC methods inherit correctly through
+PlayerSpawnManager (same script chain on every peer); station exported
+`station_id` values sit after the `script =` line in the .tscn (load
+order matters); progression sync targets the Game autoload path, which
+exists on clients from boot regardless of scene, so the on-join push
+can't race scene loading; save file writes are host-only; the tornado
+steals hats from seated players through the permanently-open side door,
+which is canon now; JSON round-trips of the upgrades dictionary preserve
+string keys and bool values; the pause menu's dim layer blocks scene
+click-to-recapture while open.

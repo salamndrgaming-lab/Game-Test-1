@@ -154,7 +154,11 @@ func _set_wheel(open: bool) -> void:
 	wheel_open = open
 	wheel.visible = open
 	click.play()
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if open else Input.MOUSE_MODE_CAPTURED
+	if open:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	elif not PauseMenu.is_open:
+		# Don't steal the cursor back from the pause menu.
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _input(event: InputEvent) -> void:
 	if wheel_open and event is InputEventKey and event.pressed and not event.echo:

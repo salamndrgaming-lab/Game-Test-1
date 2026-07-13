@@ -234,9 +234,16 @@ func _do_interact() -> void:
 		station.use(self)
 		return
 	var v := _nearest_in_group("vans", 4.0)
-	if v != null and v.enter_player(self):
-		$Grabber.drop()
-		return
+	if v != null:
+		# Winch + dead van: E hooks the tow line instead of boarding the
+		# corpse — otherwise entering always shadows grabbing and the
+		# winch's headline feature is unreachable.
+		if Game.has_upgrade("van_winch") and v.van_hp <= 0.0:
+			$Grabber.toggle()
+			return
+		if v.enter_player(self):
+			$Grabber.drop()
+			return
 	$Grabber.toggle()
 
 func _nearest_in_group(group: String, max_d: float) -> Node:
