@@ -22,10 +22,15 @@ const EMOTE_TEXT := {
 # Synced (see Sync node replication config).
 var state: int = PState.NORMAL
 var filming := false
+var hp := 100.0
+var dead := false
+var footage := 0.0  # unsaved points — forfeited on death unless recovered
+var banked := 0.0  # uploaded at extraction
 
 # Host-side simulation inputs.
 var input_move := Vector2.ZERO
 var input_yaw := 0.0
+var input_pitch := 0.0
 var sprinting := false
 var jump_queued := false
 var facing := 0.0
@@ -75,15 +80,17 @@ func _gather_input() -> void:
 	var jump := Input.is_action_just_pressed("jump")
 	var sprint := Input.is_action_pressed("sprint")
 	var yaw: float = $CameraRig.yaw
+	var pitch: float = $CameraRig.pitch
 	if multiplayer.is_server():
 		input_move = move
 		input_yaw = yaw
+		input_pitch = pitch
 		sprinting = sprint
 		if jump and state == PState.NORMAL:
 			jump_queued = true
 	else:
 		# Every tick, unreliable: lost packets are corrected next tick.
-		_submit_input.rpc_id(1, move, yaw, sprint, jump)
+		_submit_input.rpc_id(1, move, yaw, pitch, sprint, jump)
 	if Input.is_action_just_pressed("flop"):
 		if multiplayer.is_server():
 			_flop()
@@ -147,11 +154,12 @@ func _sender_ok() -> bool:
 	return multiplayer.is_server() and multiplayer.get_remote_sender_id() == peer_id()
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func _submit_input(move: Vector2, yaw: float, sprint: bool, jump: bool) -> void:
+func _submit_input(move: Vector2, yaw: float, pitch: float, sprint: bool, jump: bool) -> void:
 	if not _sender_ok():
 		return
 	input_move = move.limit_length(1.0)
 	input_yaw = yaw
+	input_pitch = pitch
 	sprinting = sprint
 	if jump and state == PState.NORMAL:
 		jump_queued = true
@@ -194,20 +202,28 @@ func _do_interact() -> void:
 		return
 	if state != PState.NORMAL:
 		return
-	var v := _nearest_van(4.0)
+	# A dropped camera (dead teammate's unsaved footage) beats everything.
+	var pickup := _nearest_in_group("camera_pickup", 3.0)
+	if pickup != null:
+		footage += pickup.amount
+		var mgr := get_tree().get_first_node_in_group("run_manager")
+		if mgr != null:
+			mgr.despawn_pickup(pickup)
+		return
+	var v := _nearest_in_group("vans", 4.0)
 	if v != null and v.enter_player(self):
 		$Grabber.drop()
 		return
 	$Grabber.toggle()
 
-func _nearest_van(max_d: float) -> Node:
+func _nearest_in_group(group: String, max_d: float) -> Node:
 	var best: Node = null
 	var best_d := max_d
-	for v in get_tree().get_nodes_in_group("vans"):
-		var d: float = v.global_position.distance_to(global_position)
+	for n in get_tree().get_nodes_in_group(group):
+		var d: float = (n as Node3D).global_position.distance_to(global_position)
 		if d < best_d:
 			best_d = d
-			best = v
+			best = n
 	return best
 
 # --- Emotes (host validates, broadcasts to all) ----------------------------------
@@ -297,7 +313,7 @@ func _ragdoll_follow(delta: float) -> void:
 			if p != self and p.state == PState.NORMAL \
 					and p.global_position.distance_to(global_position) < 0.9:
 				p._enter_ragdoll(ragdoll.torso_velocity() * 0.8)
-	if ragdoll.is_settled():
+	if not dead and ragdoll.is_settled():
 		_recover_timer += delta
 		if _recover_timer >= Game.balance.player_ragdoll_recover_seconds:
 			_exit_ragdoll()

@@ -5,7 +5,6 @@ extends CanvasLayer
 ## themselves.
 
 var battery := 1.0
-var footage_score := 0.0
 var wheel_open := false
 var _wheel_used := false
 
@@ -13,6 +12,8 @@ var viewfinder: Control
 var rec_dot: ColorRect
 var battery_bar: ProgressBar
 var score_label: Label
+var hp_label: Label
+var dead_label: Label
 var wheel: PanelContainer
 var click: AudioStreamPlayer
 
@@ -29,6 +30,32 @@ func _ready() -> void:
 	add_child(click)
 	_build_viewfinder()
 	_build_wheel()
+	_build_status()
+
+func _build_status() -> void:
+	hp_label = Label.new()
+	hp_label.anchor_left = 1.0
+	hp_label.anchor_right = 1.0
+	hp_label.anchor_top = 1.0
+	hp_label.anchor_bottom = 1.0
+	hp_label.offset_left = -140.0
+	hp_label.offset_right = -24.0
+	hp_label.offset_top = -46.0
+	hp_label.offset_bottom = -24.0
+	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	add_child(hp_label)
+	dead_label = Label.new()
+	dead_label.text = "WRECKED — your footage hit the dirt. Respawning..."
+	dead_label.anchor_left = 0.5
+	dead_label.anchor_right = 0.5
+	dead_label.anchor_top = 0.35
+	dead_label.anchor_bottom = 0.35
+	dead_label.offset_left = -260.0
+	dead_label.offset_right = 260.0
+	dead_label.offset_bottom = 30.0
+	dead_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dead_label.visible = false
+	add_child(dead_label)
 
 func _process(delta: float) -> void:
 	_update_film(delta)
@@ -44,13 +71,14 @@ func _update_film(delta: float) -> void:
 		player.set_filming(want)
 	if player.filming:
 		battery = maxf(battery - delta / Game.balance.camera_battery_seconds, 0.0)
-		# Stub: flat tick rate. Phase 3 replaces this with frustum scoring.
-		footage_score += Game.balance.footage_base_points_per_second * delta
 	viewfinder.visible = player.filming
 	if player.filming:
 		rec_dot.visible = fmod(Time.get_ticks_msec() / 1000.0, 1.0) < 0.65
 		battery_bar.value = battery * 100.0
-		score_label.text = "FOOTAGE %05d" % int(footage_score)
+		# Scored host-side (player_filming.gd), synced back via player.footage.
+		score_label.text = "FOOTAGE %05d   banked %d" % [int(player.footage), int(player.banked)]
+	hp_label.text = "HP %d" % int(player.hp)
+	dead_label.visible = player.dead
 
 func _build_viewfinder() -> void:
 	viewfinder = Control.new()

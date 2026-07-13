@@ -1,0 +1,130 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/tornado/tornado.gd" id="1_tor"]
+[ext_resource type="AudioStream" path="res://assets/audio/wind.wav" id="2_wind"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_funnel"]
+transparency = 1
+albedo_color = Color(0.35, 0.33, 0.38, 0.55)
+
+[sub_resource type="CylinderMesh" id="Cyl_f1"]
+material = SubResource("Mat_funnel")
+top_radius = 5.0
+bottom_radius = 3.0
+height = 12.0
+
+[sub_resource type="CylinderMesh" id="Cyl_f2"]
+material = SubResource("Mat_funnel")
+top_radius = 8.0
+bottom_radius = 5.0
+height = 12.0
+
+[sub_resource type="CylinderMesh" id="Cyl_f3"]
+material = SubResource("Mat_funnel")
+top_radius = 11.0
+bottom_radius = 8.0
+height = 12.0
+
+[sub_resource type="CylinderMesh" id="Cyl_f4"]
+material = SubResource("Mat_funnel")
+top_radius = 14.0
+bottom_radius = 11.0
+height = 12.0
+
+[sub_resource type="CylinderMesh" id="Cyl_f5"]
+material = SubResource("Mat_funnel")
+top_radius = 18.0
+bottom_radius = 14.0
+height = 12.0
+
+[sub_resource type="ParticleProcessMaterial" id="PPM_dust"]
+emission_shape = 5
+emission_ring_axis = Vector3(0, 1, 0)
+emission_ring_height = 2.0
+emission_ring_radius = 14.0
+emission_ring_inner_radius = 6.0
+direction = Vector3(0, 1, 0)
+initial_velocity_min = 2.0
+initial_velocity_max = 6.0
+tangential_accel_min = 20.0
+tangential_accel_max = 30.0
+gravity = Vector3(0, 1, 0)
+scale_min = 0.8
+scale_max = 2.0
+color = Color(0.45, 0.4, 0.34, 0.6)
+
+[sub_resource type="ParticleProcessMaterial" id="PPM_debris"]
+emission_shape = 5
+emission_ring_axis = Vector3(0, 1, 0)
+emission_ring_height = 40.0
+emission_ring_radius = 9.0
+emission_ring_inner_radius = 5.0
+direction = Vector3(0, 1, 0)
+initial_velocity_min = 4.0
+initial_velocity_max = 9.0
+tangential_accel_min = 35.0
+tangential_accel_max = 50.0
+gravity = Vector3(0, 6, 0)
+scale_min = 0.3
+scale_max = 1.0
+color = Color(0.3, 0.26, 0.22, 0.9)
+
+[sub_resource type="BoxMesh" id="Mesh_fleck"]
+size = Vector3(0.4, 0.4, 0.4)
+
+[sub_resource type="SceneReplicationConfig" id="SRC_tor"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:intensity")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath(".:active")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+
+[node name="Tornado" type="Node3D"]
+script = ExtResource("1_tor")
+
+[node name="Funnel" type="Node3D" parent="."]
+
+[node name="Seg1" type="MeshInstance3D" parent="Funnel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 0)
+mesh = SubResource("Cyl_f1")
+
+[node name="Seg2" type="MeshInstance3D" parent="Funnel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 18, 0)
+mesh = SubResource("Cyl_f2")
+
+[node name="Seg3" type="MeshInstance3D" parent="Funnel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 30, 0)
+mesh = SubResource("Cyl_f3")
+
+[node name="Seg4" type="MeshInstance3D" parent="Funnel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 42, 0)
+mesh = SubResource("Cyl_f4")
+
+[node name="Seg5" type="MeshInstance3D" parent="Funnel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 54, 0)
+mesh = SubResource("Cyl_f5")
+
+[node name="Dust" type="GPUParticles3D" parent="."]
+amount = 48
+lifetime = 1.8
+process_material = SubResource("PPM_dust")
+draw_pass_1 = SubResource("Mesh_fleck")
+
+[node name="Debris" type="GPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
+amount = 60
+lifetime = 3.0
+process_material = SubResource("PPM_debris")
+draw_pass_1 = SubResource("Mesh_fleck")
+
+[node name="Wind" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("2_wind")
+volume_db = -38.0
+
+[node name="Sync" type="MultiplayerSynchronizer" parent="."]
+root_path = NodePath("..")
+replication_config = SubResource("SRC_tor")

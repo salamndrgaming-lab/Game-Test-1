@@ -1,7 +1,9 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_pl"]
 [ext_resource type="Script" path="res://scripts/player/player_grab.gd" id="7_grab"]
+[ext_resource type="Script" path="res://scripts/player/player_health.gd" id="8_health"]
+[ext_resource type="Script" path="res://scripts/player/player_filming.gd" id="9_film"]
 [ext_resource type="Script" path="res://scripts/player/player_ragdoll.gd" id="2_rag"]
 [ext_resource type="Script" path="res://scripts/player/player_camera.gd" id="3_cam"]
 [ext_resource type="Script" path="res://scripts/player/player_hud.gd" id="4_hud"]
@@ -47,6 +49,18 @@ properties/1/replication_mode = 1
 properties/2/path = NodePath(".:filming")
 properties/2/spawn = true
 properties/2/replication_mode = 1
+properties/3/path = NodePath(".:hp")
+properties/3/spawn = true
+properties/3/replication_mode = 1
+properties/4/path = NodePath(".:dead")
+properties/4/spawn = true
+properties/4/replication_mode = 1
+properties/5/path = NodePath(".:footage")
+properties/5/spawn = true
+properties/5/replication_mode = 1
+properties/6/path = NodePath(".:banked")
+properties/6/spawn = true
+properties/6/replication_mode = 1
 
 [sub_resource type="SceneReplicationConfig" id="SRC_ragdoll"]
 properties/0/path = NodePath("Torso:position")
@@ -222,6 +236,12 @@ stream = ExtResource("6_bonk")
 
 [node name="Grabber" type="Node" parent="."]
 script = ExtResource("7_grab")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("8_health")
+
+[node name="Filming" type="Node" parent="."]
+script = ExtResource("9_film")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("4_hud")

@@ -39,6 +39,8 @@ func _status_text() -> String:
 	lines.append("WASD move  SHIFT sprint  SPACE jump  E grab/enter van  hold C film")
 	lines.append("X flop  hold Q emotes  ESC free mouse / leave")
 	lines.append("Van: WASD drive  SHIFT brake  H horn  R radio  G glovebox  E exit")
+	if multiplayer.is_server():
+		lines.append("ENTER: start a storm run")
 	return "\n".join(lines)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -60,6 +62,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				DisplayServer.clipboard_set(str(SteamManager.lobby_id))
 			KEY_F2:
 				SteamManager.invite_overlay()
+			KEY_ENTER:
+				if multiplayer.is_server():
+					Game.net_change_state.rpc(Game.State.STORM_RUN)
 
 # --- Spawning -------------------------------------------------------------------
 

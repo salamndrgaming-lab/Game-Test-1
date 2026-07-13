@@ -17,6 +17,10 @@ extends Resource
 @export var player_ragdoll_recover_seconds := 2.0
 @export var ragdoll_impact_speed := 7.0  # sudden decel above this = comedy ragdoll
 @export var mouse_sensitivity := 0.003
+@export var player_max_hp := 100.0
+@export var fall_damage_min_decel := 8.0  # ragdoll impacts below this are free
+@export var fall_damage_scale := 4.0  # heavy damage, not instant death (design)
+@export var player_respawn_seconds := 10.0
 
 @export_group("Grabbing")
 @export var grab_spring := 40.0
@@ -33,6 +37,23 @@ extends Resource
 @export var tornado_pull_outer := 4.0
 @export var tornado_pull_middle := 14.0
 @export var tornado_pull_inner := 40.0
+@export var tornado_wander_speed := 7.0
+@export var tornado_middle_push := 12.0  # player shove in the middle ring
+@export var tornado_inner_lift := 30.0  # ragdoll orbit lift (per torso mass)
+@export var tornado_van_push := 2500.0
+@export var tornado_van_lift := 14000.0  # > 900kg * 9.8 so it actually flies
+@export var tornado_van_lift_intensity := 3.0  # F-rating needed to lift the van
+
+@export_group("Run")  # Phase 3
+@export var run_chase_seconds := 600.0  # 10 min storm
+@export var run_extract_seconds := 90.0
+
+@export_group("Filming")  # Phase 3
+@export var film_max_range := 400.0
+@export var film_fov_degrees := 60.0
+@export var film_bonus_fling := 40.0  # friend being flung, per second
+@export var film_bonus_van_air := 80.0  # van airborne, per second
+@export var views_per_point := 12.0
 
 @export_group("Van")  # Phase 2
 @export var van_engine_torque := 250.0

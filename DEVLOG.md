@@ -286,3 +286,70 @@ been executed yet. Found and fixed:
   convention guesses — one-line flips if wrong.
 - VehicleBody3D feel, pin-joint floppiness, and all "is it funny" checks
   need a real playtest.
+
+---
+
+## Phase 3 — The tornado & the core loop (2026-07-13)
+
+### What was built
+
+- **Tornado** (`scenes/tornado/tornado.tscn`) — stacked translucent funnel
+  segments (placeholder for billboarded layers), rotating debris column and
+  ground dust skirt (GPU particles), looping wind whose volume ramps with
+  proximity and intensity. Host-simulated noise-driven wander that steers
+  back inside the map; intensity climbs F1 → F4 across the run and the sky
+  darkens with it. Position/intensity synced; clients only run visuals.
+- **Three-ring suction** (host): outer 200 m — loose props (cones, crates,
+  planks, van doors) slide toward the funnel; middle 80 m — players shoved,
+  light props go airborne, van pushed; inner 25 m — standing players
+  ragdoll, ragdolls orbit up the funnel (lift fades near the top, so bodies
+  get flung out ballistically), and at F3+ the van itself lifts and tumbles.
+- **Real filming scoring** (host, replaces the HUD stub): points/sec =
+  base × tornado-in-frame × proximity × intensity, plus subject bonuses
+  (friend being flung, VAN AIRBORNE), times a steadiness multiplier.
+  Best-single-second and its caption tracked for the results screen.
+- **HP / death / drama**: ragdoll impact decelerations deal fall damage
+  (heavy, not instant death). At 0 HP you're dead: your unsaved footage
+  drops as a glowing camera pickup any teammate can E-grab; you respawn by
+  the van after 10 s. HP + dead state on the HUD.
+- **Run structure**: NetTest lobby → host presses ENTER → storm run
+  (10 min chase, timer + F-rating on screen) → storm dissipates →
+  "GET TO EXTRACTION" (green beacon, 90 s) → footage banks inside the
+  zone → RESULTS screen: per-player footage, best-clip caption, views,
+  money, crew total → back to lobby. Scene transitions are host-broadcast
+  RPCs on the Game autoload.
+- **Map**: 1 km² placeholder — farmhouse, barn with loose plank debris
+  (scatters in the outer ring), gas station with props, water tower,
+  trailer park, corn field patch, extraction beacon at the garage corner,
+  van parked at spawn. Real layout, placeholder boxes.
+
+### How to test (gate)
+
+Two instances as usual. **Gate 1 (solo is fine):** HOST LOCAL alone →
+ENTER → drive toward the funnel → film it (C) → survive → extraction →
+results screen shows money. **Gate 2 (the clip):** two players; one stands
+in the middle ring filming while the other walks into the inner ring —
+the filmer's footage counter should visibly spike when the victim starts
+orbiting ("P2 getting yeeted"). Then both drive back and bank it.
+
+Practical testing notes:
+- 10 minutes is long for a test loop — drop `run_chase_seconds` to ~120 in
+  `config/balance.tres` while testing.
+- Tornado starts at the far corner (~900 m away); drive toward the dark sky.
+
+### Known jank / honesty section
+
+- **Still nothing executed** — same environment limits. This phase has the
+  most hand-tuned numbers yet (suction forces, lift, damage scale); expect
+  the first run to need balance.tres passes. The structure is sound; the
+  values are educated guesses.
+- Scene transitions mid-session will briefly log synchronizer errors as
+  in-flight packets hit freed nodes — cosmetic, known Godot behavior.
+- Van↔tornado interaction with seated players untested territory: being
+  in a lifted van should hold you in your seat (seats teleport you), which
+  is either great or nauseating on camera. Report back.
+- Corn field is a flat green rectangle. Lightning strikes and barn
+  "pre-broken pieces" beyond the plank pile were skipped — noted for the
+  Phase 6 polish list or a Phase 3.5 if you want them sooner.
+- Dead players spectate their own corpse (camera follows the ragdoll).
+  Acceptable for now; a proper spectate cam can come with Phase 5 polish.
