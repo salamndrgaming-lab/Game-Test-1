@@ -61,6 +61,9 @@ properties/5/replication_mode = 1
 properties/6/path = NodePath(".:banked")
 properties/6/spawn = true
 properties/6/replication_mode = 1
+properties/7/path = NodePath(".:hat_id")
+properties/7/spawn = true
+properties/7/replication_mode = 1
 
 [sub_resource type="SceneReplicationConfig" id="SRC_ragdoll"]
 properties/0/path = NodePath("Torso:position")
@@ -130,6 +133,10 @@ mesh = SubResource("SphereMesh_head")
 
 [node name="Shape" type="CollisionShape3D" parent="Ragdoll/Head"]
 shape = SubResource("SphereShape_head")
+
+[node name="Hat" type="MeshInstance3D" parent="Ragdoll/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28, 0)
+visible = false
 
 [node name="ArmL" type="RigidBody3D" parent="Ragdoll"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 1.18, 0)

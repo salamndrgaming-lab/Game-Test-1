@@ -20,7 +20,7 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		var sens: float = Game.balance.mouse_sensitivity
+		var sens: float = Game.balance.mouse_sensitivity * float(Game.settings.get("sensitivity", 1.0))
 		yaw = wrapf(yaw - event.relative.x * sens, -PI, PI)
 		pitch = clampf(pitch - event.relative.y * sens, deg_to_rad(-70.0), deg_to_rad(35.0))
 

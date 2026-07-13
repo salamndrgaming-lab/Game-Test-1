@@ -42,6 +42,8 @@ func _die() -> void:
 	if player.state != player.PState.RAGDOLL:
 		player._enter_ragdoll()
 	var mgr := get_tree().get_first_node_in_group("run_manager")
+	if mgr != null:
+		mgr.note_death()  # feeds the auto-generated run title
 	if mgr != null and player.footage > 0.0:
 		# Drop at ground level: dying mid-orbit would otherwise leave the
 		# pickup floating 40m up in the funnel, unreachable. Map is flat.

@@ -20,6 +20,12 @@ func _ready() -> void:
 		p.freeze = true
 		_set_collide(p, false)
 
+func set_hat(id: int) -> void:
+	var hat: MeshInstance3D = $Head/Hat
+	hat.visible = id != 0
+	if id != 0:
+		hat.mesh = HatProp.build_mesh(id)
+
 func tint(color: Color) -> void:
 	for part_name in PARTS:
 		var mat := StandardMaterial3D.new()

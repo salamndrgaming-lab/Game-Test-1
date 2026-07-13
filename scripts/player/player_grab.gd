@@ -13,13 +13,25 @@ func toggle() -> void:
 		return
 	var best: RigidBody3D = null
 	var best_d := 2.6
-	for node in get_tree().get_nodes_in_group("grabbable"):
+	for node in _candidates():
 		if node is RigidBody3D:
 			var d: float = node.global_position.distance_to(_hold_point())
 			if d < best_d:
 				best_d = d
 				best = node
 	grabbed = best
+
+## The winch upgrade extends grabbing to the van chassis and to downed
+## friends' torsos — that's the towing feature, implemented as a stronger
+## version of the same floppy spring.
+func _candidates() -> Array:
+	var list: Array = get_tree().get_nodes_in_group("grabbable")
+	if Game.has_upgrade("van_winch"):
+		list.append_array(get_tree().get_nodes_in_group("vans"))
+		for p in get_tree().get_nodes_in_group("players"):
+			if p != player and p.state == p.PState.RAGDOLL:
+				list.append(p.ragdoll.torso)
+	return list
 
 func drop() -> void:
 	grabbed = null
@@ -33,6 +45,8 @@ func update(_delta: float) -> void:
 		return
 	var to := _hold_point() - grabbed.global_position
 	var force := to * Game.balance.grab_spring - grabbed.linear_velocity * Game.balance.grab_damping
+	if grabbed is VehicleBody3D:
+		force *= Game.balance.winch_spring_multiplier
 	grabbed.apply_central_force(force * grabbed.mass)
 
 func _hold_point() -> Vector3:

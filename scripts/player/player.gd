@@ -26,6 +26,12 @@ var hp := 100.0
 var dead := false
 var footage := 0.0  # unsaved points — forfeited on death unless recovered
 var banked := 0.0  # uploaded at extraction
+var hat_id := 0  # cosmetic; the wind WILL take it
+
+# Host-side run stats.
+var air_time := 0.0
+
+var _hat_applied := -1
 
 # Host-side simulation inputs.
 var input_move := Vector2.ZERO
@@ -69,6 +75,9 @@ func _physics_process(delta: float) -> void:
 
 func _process(_delta: float) -> void:
 	film_tag.visible = filming and state != PState.RAGDOLL
+	if hat_id != _hat_applied:
+		_hat_applied = hat_id
+		ragdoll.set_hat(hat_id)
 	if state != _prev_state:
 		if state == PState.RAGDOLL:
 			$BonkAudio.play()
@@ -211,6 +220,19 @@ func _do_interact() -> void:
 		if mgr != null:
 			mgr.despawn_pickup(pickup)
 		return
+	# A hat on the ground goes back on the head.
+	var hat := _nearest_in_group("hat_prop", 2.5)
+	if hat != null:
+		hat_id = hat.hat_id
+		var hat_mgr := get_tree().get_first_node_in_group("run_manager")
+		if hat_mgr != null:
+			hat_mgr.despawn_pickup(hat)
+		return
+	# Garage stations (contracts board, shop bench, paint, hats, door).
+	var station := _nearest_in_group("station", 2.6)
+	if station != null:
+		station.use(self)
+		return
 	var v := _nearest_in_group("vans", 4.0)
 	if v != null and v.enter_player(self):
 		$Grabber.drop()
@@ -308,6 +330,8 @@ func _enter_ragdoll(initial_velocity: Vector3 = Vector3.ZERO) -> void:
 
 func _ragdoll_follow(delta: float) -> void:
 	ragdoll.hold_root_to_torso(self)
+	if ragdoll.torso_position().y > 3.0:
+		air_time += delta  # "Most Airborne" results stat
 	# A fast-flying body knocks over anyone it hits. Content.
 	if ragdoll.torso_speed() > 5.0:
 		for p in get_tree().get_nodes_in_group("players"):

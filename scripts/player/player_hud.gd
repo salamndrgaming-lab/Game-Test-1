@@ -70,7 +70,9 @@ func _update_film(delta: float) -> void:
 	if want != player.filming:
 		player.set_filming(want)
 	if player.filming:
-		battery = maxf(battery - delta / Game.balance.camera_battery_seconds, 0.0)
+		var seconds: float = Game.balance.camera_battery_seconds \
+				* (2.0 if Game.has_upgrade("cam_battery") else 1.0)
+		battery = maxf(battery - delta / seconds, 0.0)
 	viewfinder.visible = player.filming
 	if player.filming:
 		rec_dot.visible = fmod(Time.get_ticks_msec() / 1000.0, 1.0) < 0.65

@@ -33,7 +33,10 @@ func _physics_process(delta: float) -> void:
 		if intensity <= 0.05:
 			active = false
 	else:
-		intensity = 1.0 + 3.0 * clampf(_elapsed / Game.balance.run_chase_seconds, 0.0, 1.0)
+		# The garage contract caps the F-rating: F1 stays a dust devil,
+		# F4 ramps all the way to The Finger of God.
+		var cap := float(clampi(Game.contract_tier, 1, 4))
+		intensity = 1.0 + (cap - 1.0) * clampf(_elapsed / Game.balance.run_chase_seconds, 0.0, 1.0)
 	_wander(delta)
 	_apply_suction(delta)
 
@@ -107,6 +110,13 @@ func _pull_player(p: Node, bal: BalanceConfig, inten_f: float) -> void:
 	if d > bal.tornado_middle_radius or d < 0.1:
 		return
 	var inward := off / d
+	# Hats must physics-detach in the wind and be chaseable (design doc).
+	if p.hat_id != 0:
+		var mgr := get_tree().get_first_node_in_group("run_manager")
+		if mgr != null:
+			var fling := Vector3.UP * 6.0 + inward.cross(Vector3.UP) * 8.0
+			mgr.spawn_hat(p.global_position + Vector3.UP * 2.0, p.hat_id, fling)
+			p.hat_id = 0
 	if p.state == p.PState.NORMAL:
 		if d < bal.tornado_inner_radius:
 			p._enter_ragdoll(Vector3.UP * 6.0)
@@ -127,7 +137,8 @@ func _pull_van(v: Node, bal: BalanceConfig, inten_f: float) -> void:
 	if d > bal.tornado_middle_radius:
 		return
 	var inward := off / maxf(d, 1.0)
-	v.apply_central_force(inward * bal.tornado_van_push * inten_f)
+	var push := bal.tornado_van_push * (0.5 if Game.has_upgrade("van_tires") else 1.0)
+	v.apply_central_force(inward * push * inten_f)
 	if d < bal.tornado_inner_radius and intensity >= bal.tornado_van_lift_intensity:
 		v.apply_central_force(Vector3.UP * bal.tornado_van_lift)
 		v.apply_torque(Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * 3000.0)

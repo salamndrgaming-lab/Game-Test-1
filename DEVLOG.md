@@ -386,3 +386,83 @@ players excluded from suction re-ragdoll and extraction checks,
 tornado-immune seated players (the van takes the forces, as designed),
 duck-typed cross-script access compiles as dynamic lookup with warnings
 (not errors) under GDScript's UNSAFE_* rules.
+
+---
+
+## Phase 5 — Progression, garage, session glue (2026-07-13)
+
+(Phase 4 — proximity voice — deliberately deferred: it needs the GodotSteam
+extension live on a real machine to build against. It'll come after the
+first playtest round.)
+
+### What was built
+
+- **The garage** (`scenes/garage/garage.tscn`) is the new lobby/hub — the
+  only place players can join. Walkable room with the van (drivable,
+  honkable, paintable), a cone to kick, and five E-interact stations:
+  - **CONTRACTS BOARD** — cycles F1 "Dust Devil Daycare" → F4 "The Finger
+    of God". The contract caps the storm's F-rating and multiplies the
+    payout (×1.0 / ×1.6 / ×2.6 / ×4.0, in balance.tres).
+  - **UPGRADES BENCH** — opens the shop overlay. Crew wallet,
+    host-validated purchases: Bigger Engine (+35% torque), Roll Cage (half
+    crash damage), Storm Tires (half tornado shove), **Winch** (E-grab the
+    van or a downed friend to tow them — same floppy spring, 3× stronger),
+    Wide Lens (+20° film cone), Stabilizer (no moving penalty), Big
+    Battery (2× camcorder battery).
+  - **PAINT BOOTH** — cycles van paint (5 colors, synced, persisted).
+  - **HAT RACK** — cycles your hat (cone / bucket / crown). Hats
+    physics-detach in the tornado's middle ring and become grabbable,
+    chaseable props you can put back on. As designed.
+  - **GARAGE DOOR** — host rolls the crew out to the storm run.
+- **Persistence** — host's `user://twister_save.json` holds crew money,
+  upgrades, and paint; loaded at boot, saved on every purchase and payout.
+  Clients get progression synced on join (crew-wide wallet, no per-player
+  economics, per the design doc).
+- **Results screen polish** — auto-generated run title ("The Time The Van
+  Learned To Fly" / "The Time Everybody Kept Dying" / ...), per-player
+  stats: Best Cameraman, Most Airborne (ragdoll airtime + riding a flying
+  van), Least Useful — plus the **CLIP THAT** button, which does exactly
+  what the design doc says it does (nothing, loudly).
+- **Pause menu** (ESC anywhere in a session; autoload overlay): Resume,
+  Invite Friends (Steam overlay), Settings (master volume + mouse
+  sensitivity sliders, saved to `user://settings.json`; push-to-talk
+  toggle stubbed for Phase 4), Leave Session, Quit. The game does not
+  pause — it's multiplayer, the storm doesn't care.
+- **Refactor**: the three player-spawning scenes now share one
+  `PlayerSpawnManager` base class (the ready-handshake logic lives once).
+  NetTest is demoted to a dev sandbox; menu/session flow goes straight to
+  the garage.
+
+### How to test (gate)
+
+The Phase 5 gate is the full session loop, two instances (4 ideally):
+
+1. Host + join → both walk around the **garage**.
+2. Cycle a **contract** (board label updates in both windows), everyone
+   grabs a **hat**, host cycles **paint** (van repaints live everywhere).
+3. **ENTER the storm run** via the garage door → hats get eaten by the
+   middle ring (chase them!) → film → extract → **results** (check the run
+   title and awards) → BACK TO THE GARAGE.
+4. **Buy an upgrade** with the money you just made (both windows' shop
+   should show OWNED) → run again → torque/lens/battery difference.
+5. Quit the host entirely, restart: money/upgrades/paint should load from
+   the save file.
+6. ESC everywhere: pause menu opens over gameplay, sliders persist across
+   restarts, Leave Session returns everyone to the menu cleanly.
+
+### Known jank / honesty section
+
+- **Still nothing executed** — the full stack (Phases 0/1/2/3/5) awaits its
+  first playtest. Two static review passes are in, but expect editor
+  warnings (duck-typed UNSAFE_* lookups are intentional) and possibly a
+  stray tscn property typo.
+- Winch-towing quality depends entirely on VehicleBody vs spring behavior —
+  pure guesswork until driven. Same for whether the garage room is big
+  enough to drive the van without instantly ramming a wall (it is not, and
+  that is a feature).
+- Hats: skins beyond three placeholder shapes, and per-player hat
+  persistence, are punted to the art pass.
+- Both local test instances share `user://` (same machine), so they share
+  a save file — harmless because clients get host-synced values anyway.
+- The pause menu doesn't block player movement while open (mouse-look
+  stops, WASD doesn't). Design-adjacent; revisit if it annoys.

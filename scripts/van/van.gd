@@ -17,6 +17,14 @@ var van_hp := 100.0
 var radio_on := false
 var glovebox_used := false
 
+const PAINT_PALETTE := [
+	Color(0.72, 0.74, 0.8),  # primer gray
+	Color(0.75, 0.25, 0.2),  # barn red
+	Color(0.2, 0.6, 0.6),  # motel teal
+	Color(0.85, 0.75, 0.25),  # caution yellow
+	Color(0.55, 0.35, 0.7),  # regret purple
+]
+
 var _prev_vel := Vector3.ZERO
 var _base_color := Color(0.72, 0.74, 0.8)
 var _body_mat := StandardMaterial3D.new()
@@ -44,7 +52,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server():
 		return
-	_update_seats()
+	_update_seats(delta)
 	_apply_driver_input(delta)
 	_update_damage()
 	_bonk_pedestrians()
@@ -111,7 +119,7 @@ func _seat_marker(slot: String) -> Node3D:
 		return $Seats.get_node(slot) as Node3D
 	return $Seats.get_node("driver") as Node3D
 
-func _update_seats() -> void:
+func _update_seats(delta: float) -> void:
 	for slot in seats.keys():
 		var p := _player_by_id(seats[slot])
 		if p == null or p.van != self:
@@ -122,6 +130,8 @@ func _update_seats() -> void:
 		var fwd := -global_basis.z
 		p.facing = atan2(fwd.x, fwd.z)
 		p.ragdoll.follow_pose(p.facing)
+		if global_position.y > 6.0:
+			p.air_time += delta  # riding a flying van counts as airborne
 
 func _player_by_id(pid: int) -> Node:
 	for p in get_tree().get_nodes_in_group("players"):
@@ -141,7 +151,8 @@ func _apply_driver_input(delta: float) -> void:
 		throttle = -drv.input_move.y  # W = forward
 		steer_in = -drv.input_move.x
 		braking = drv.sprinting
-	engine_force = throttle * bal.van_engine_torque if van_hp > 0.0 else 0.0
+	var torque := bal.van_engine_torque * (1.35 if Game.has_upgrade("van_engine") else 1.0)
+	engine_force = throttle * torque if van_hp > 0.0 else 0.0
 	steering = move_toward(steering, steer_in * bal.van_max_steer, bal.van_steer_speed * delta)
 	if braking:
 		brake = bal.van_brake_force
@@ -157,9 +168,13 @@ func _update_damage() -> void:
 	_prev_vel = linear_velocity
 	var bal: BalanceConfig = Game.balance
 	if decel > bal.van_impact_min_decel:
-		van_hp = maxf(van_hp - (decel - bal.van_impact_min_decel) * bal.van_impact_damage_scale, 0.0)
+		var dmg := (decel - bal.van_impact_min_decel) * bal.van_impact_damage_scale
+		if Game.has_upgrade("van_rollcage"):
+			dmg *= 0.5
+		van_hp = maxf(van_hp - dmg, 0.0)
 
 func _update_visuals_and_audio() -> void:
+	_base_color = PAINT_PALETTE[Game.van_paint % PAINT_PALETTE.size()]
 	var frac := van_hp / Game.balance.van_max_hp
 	# Placeholder crumple: panels darken and the body sags as HP drops
 	# (75/50/25% read as progressively worse). Real dent meshes come with art.

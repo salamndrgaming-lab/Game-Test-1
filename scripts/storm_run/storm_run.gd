@@ -1,51 +1,49 @@
-extends Node3D
-## Run manager: storm spawns at the map edge -> ~10 min chase -> storm
-## dissipates -> drive to extraction -> footage uploads -> RESULTS.
-## Host drives the state machine; run_state/time_left sync to clients.
-## Player spawning uses the same ready-handshake as NetTest (see that file
-## for why MultiplayerSpawner can't be trusted with our scene-change timing).
+extends PlayerSpawnManager
+## Run manager: storm spawns at the map edge -> chase -> storm dissipates ->
+## drive to extraction -> footage uploads -> RESULTS. Host drives the state
+## machine; run_state/time_left sync to clients. Contract tier (garage board)
+## caps the storm's F-rating and multiplies the payout.
 
 enum RunState { CHASE, DISSIPATE, EXTRACT, DONE }
 
-const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
 const PICKUP_SCENE := preload("res://scenes/props/camera_pickup.tscn")
+const HAT_SCENE := preload("res://scenes/props/hat_prop.tscn")
 const EXTRACT_RADIUS := 15.0
 
 var run_state: int = RunState.CHASE  # synced
 var time_left := 0.0  # synced
 
 var _pickup_seq := 0
+var _van_flew := false
+var _deaths := 0
 
-@onready var players: Node3D = $Players
 @onready var tornado: Node3D = $Tornado
 @onready var extraction: Node3D = $Extraction
 @onready var sun: DirectionalLight3D = $Sun
 @onready var run_label: Label = $UI/RunLabel
 
 func _ready() -> void:
+	super._ready()
 	add_to_group("run_manager")
 	$Sun.rotation_degrees = Vector3(-55.0, -30.0, 0.0)
-	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	if multiplayer.is_server():
 		time_left = Game.balance.run_chase_seconds
-		_spawn_local(1, _spawn_pos(0))
-	else:
-		_notify_ready.rpc_id(1)
+
+func _spawn_pos(idx: int) -> Vector3:
+	return Vector3(438.0 + 2.5 * idx, 0.2, 442.0)
 
 func _physics_process(delta: float) -> void:
-	if multiplayer.is_server():
-		_update_run(delta)
+	if not multiplayer.is_server():
+		return
+	_update_run(delta)
+	if not _van_flew:
+		for v in get_tree().get_nodes_in_group("vans"):
+			if v.global_position.y > 6.0:
+				_van_flew = true
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		# Same convention as the lobby: first ESC frees the mouse, second
-		# leaves the session (host leaving ends the run for everyone).
-		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-		else:
-			SteamManager.leave_session()
-	elif event is InputEventMouseButton and event.pressed \
-			and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+	if event is InputEventMouseButton and event.pressed \
+			and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not PauseMenu.is_open:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _process(_delta: float) -> void:
@@ -103,6 +101,10 @@ func _all_alive_at_extraction() -> bool:
 			return false
 	return true
 
+## Called by player_health on the host when someone eats dirt.
+func note_death() -> void:
+	_deaths += 1
+
 func _finish_run() -> void:
 	run_state = RunState.DONE
 	var results: Array = []
@@ -115,19 +117,38 @@ func _finish_run() -> void:
 			"footage": int(p.banked),
 			"best": int(filming.best_second),
 			"caption": String(filming.best_caption),
+			"air": snappedf(p.air_time, 0.1),
 		})
+	var title := "The Time We Almost Made Money"
+	if total < 50.0:
+		title = "The Time Nobody Filmed Anything"
+	if _deaths == 1:
+		title = "The Time Somebody Ate Dirt"
+	elif _deaths > 1:
+		title = "The Time Everybody Kept Dying"
+	if _van_flew:
+		title = "The Time The Van Learned To Fly"
+	var mult: float = Game.balance.contract_multipliers[clampi(Game.contract_tier - 1, 0, 3)]
 	var views := int(total * Game.balance.views_per_point)
-	var money := int(views / 100.0 * Game.balance.payout_per_100_views)
-	Game.set_run_results.rpc(results, views, money)
+	var money := int(views / 100.0 * Game.balance.payout_per_100_views * mult)
+	Game.set_run_results.rpc(results, views, money, title)
 	Game.net_change_state.rpc(Game.State.RESULTS)
 
-# --- Camera pickups (death drops) --------------------------------------------
+# --- Runtime prop spawns (camera pickups, blown-off hats) ----------------------
 
 func spawn_pickup(pos: Vector3, amount: float) -> void:  # host
 	_pickup_seq += 1
 	_spawn_pickup.rpc("pickup_%d" % _pickup_seq, pos, amount)
 
-func despawn_pickup(node: Node) -> void:  # host
+func spawn_hat(pos: Vector3, id: int, vel: Vector3) -> void:  # host
+	_pickup_seq += 1
+	var hat_name := "hat_%d" % _pickup_seq
+	_spawn_hat.rpc(hat_name, pos, id)
+	# call_local ran synchronously above, so the host copy exists now.
+	var hat: RigidBody3D = $Pickups.get_node(hat_name)
+	hat.linear_velocity = vel
+
+func despawn_pickup(node: Node) -> void:  # host; also used for hats
 	_despawn_pickup.rpc(String(node.name))
 
 @rpc("authority", "call_local", "reliable")
@@ -139,41 +160,14 @@ func _spawn_pickup(pickup_name: String, pos: Vector3, amount: float) -> void:
 	$Pickups.add_child(pk)
 
 @rpc("authority", "call_local", "reliable")
+func _spawn_hat(hat_name: String, pos: Vector3, id: int) -> void:
+	var hat := HAT_SCENE.instantiate()
+	hat.name = hat_name
+	hat.hat_id = id
+	hat.position = pos
+	$Pickups.add_child(hat)
+
+@rpc("authority", "call_local", "reliable")
 func _despawn_pickup(pickup_name: String) -> void:
 	if $Pickups.has_node(pickup_name):
 		$Pickups.get_node(pickup_name).queue_free()
-
-# --- Player spawning (ready-handshake, same rationale as net_test.gd) ---------
-
-@rpc("any_peer", "call_remote", "reliable")
-func _notify_ready() -> void:
-	if not multiplayer.is_server():
-		return
-	var pid := multiplayer.get_remote_sender_id()
-	for existing in players.get_children():
-		_spawn_remote.rpc_id(pid, int(str(existing.name)), existing.position)
-	_spawn_remote.rpc(pid, _spawn_pos(players.get_child_count()))
-
-@rpc("authority", "call_local", "reliable")
-func _spawn_remote(pid: int, pos: Vector3) -> void:
-	_spawn_local(pid, pos)
-
-func _spawn_local(pid: int, pos: Vector3) -> void:
-	if players.has_node(str(pid)):
-		return
-	var player := PLAYER_SCENE.instantiate()
-	player.name = str(pid)
-	player.position = pos
-	players.add_child(player)
-
-func _spawn_pos(idx: int) -> Vector3:
-	return Vector3(438.0 + 2.5 * idx, 0.2, 442.0)
-
-func _on_peer_disconnected(id: int) -> void:
-	if multiplayer.is_server():
-		_despawn_remote.rpc(id)
-
-@rpc("authority", "call_local", "reliable")
-func _despawn_remote(pid: int) -> void:
-	if players.has_node(str(pid)):
-		players.get_node(str(pid)).queue_free()

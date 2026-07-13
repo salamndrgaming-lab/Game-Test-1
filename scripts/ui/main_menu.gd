@@ -55,7 +55,7 @@ func _on_settings() -> void:
 	status_label.text = "Settings arrive in Phase 5."
 
 func _on_session_started(_as_host: bool) -> void:
-	Game.change_state(Game.State.LOBBY)
+	Game.change_state(Game.State.GARAGE)
 
 func _on_session_failed(reason: String) -> void:
 	status_label.text = reason

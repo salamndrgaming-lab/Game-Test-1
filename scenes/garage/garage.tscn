@@ -1,0 +1,195 @@
+[gd_scene load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://scripts/garage/garage.gd" id="1_gar"]
+[ext_resource type="Script" path="res://scripts/garage/garage_station.gd" id="2_sta"]
+[ext_resource type="Script" path="res://scripts/garage/garage_shop.gd" id="3_shop"]
+[ext_resource type="PackedScene" path="res://scenes/van/van.tscn" id="4_van"]
+[ext_resource type="PackedScene" path="res://scenes/props/traffic_cone.tscn" id="5_cone"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMat_g"]
+
+[sub_resource type="Sky" id="Sky_g"]
+sky_material = SubResource("SkyMat_g")
+
+[sub_resource type="Environment" id="Env_g"]
+background_mode = 2
+sky = SubResource("Sky_g")
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.35, 0.36, 0.4, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_floor"]
+material = SubResource("Mat_floor")
+size = Vector3(30, 1, 20)
+
+[sub_resource type="BoxShape3D" id="BoxShape_floor"]
+size = Vector3(30, 1, 20)
+
+[sub_resource type="StandardMaterial3D" id="Mat_wall"]
+albedo_color = Color(0.5, 0.47, 0.42, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_wall_z"]
+material = SubResource("Mat_wall")
+size = Vector3(30, 5, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape_wall_z"]
+size = Vector3(30, 5, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_wall_x"]
+material = SubResource("Mat_wall")
+size = Vector3(1, 5, 20)
+
+[sub_resource type="BoxShape3D" id="BoxShape_wall_x"]
+size = Vector3(1, 5, 20)
+
+[sub_resource type="BoxMesh" id="BoxMesh_station"]
+size = Vector3(1.2, 1.1, 0.6)
+
+[node name="Garage" type="Node3D"]
+script = ExtResource("1_gar")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_g")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+shadow_enabled = true
+
+[node name="Floor" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Floor"]
+mesh = SubResource("BoxMesh_floor")
+
+[node name="Shape" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("BoxShape_floor")
+
+[node name="WallN" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -10)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallN"]
+mesh = SubResource("BoxMesh_wall_z")
+
+[node name="Shape" type="CollisionShape3D" parent="WallN"]
+shape = SubResource("BoxShape_wall_z")
+
+[node name="WallS" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 10)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallS"]
+mesh = SubResource("BoxMesh_wall_z")
+
+[node name="Shape" type="CollisionShape3D" parent="WallS"]
+shape = SubResource("BoxShape_wall_z")
+
+[node name="WallE" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 2.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallE"]
+mesh = SubResource("BoxMesh_wall_x")
+
+[node name="Shape" type="CollisionShape3D" parent="WallE"]
+shape = SubResource("BoxShape_wall_x")
+
+[node name="WallW" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 2.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallW"]
+mesh = SubResource("BoxMesh_wall_x")
+
+[node name="Shape" type="CollisionShape3D" parent="WallW"]
+shape = SubResource("BoxShape_wall_x")
+
+[node name="MoneySign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -9.4)
+text = "CREW MONEY: $0"
+font_size = 96
+
+[node name="Stations" type="Node3D" parent="."]
+
+[node name="Contracts" type="Node3D" parent="Stations" groups=["station"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -9)
+script = ExtResource("2_sta")
+station_id = "contracts"
+
+[node name="Mesh" type="MeshInstance3D" parent="Stations/Contracts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+mesh = SubResource("BoxMesh_station")
+
+[node name="Title" type="Label3D" parent="Stations/Contracts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
+billboard = 1
+text = "CONTRACTS BOARD"
+
+[node name="Info" type="Label3D" parent="Stations/Contracts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
+billboard = 1
+modulate = Color(1, 0.85, 0.4, 1)
+text = "..."
+
+[node name="Shop" type="Node3D" parent="Stations" groups=["station"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -9)
+script = ExtResource("2_sta")
+station_id = "shop"
+
+[node name="Mesh" type="MeshInstance3D" parent="Stations/Shop"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+mesh = SubResource("BoxMesh_station")
+
+[node name="Title" type="Label3D" parent="Stations/Shop"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 0)
+billboard = 1
+text = "UPGRADES BENCH — E"
+
+[node name="Paint" type="Node3D" parent="Stations" groups=["station"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -9)
+script = ExtResource("2_sta")
+station_id = "paint"
+
+[node name="Mesh" type="MeshInstance3D" parent="Stations/Paint"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+mesh = SubResource("BoxMesh_station")
+
+[node name="Title" type="Label3D" parent="Stations/Paint"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 0)
+billboard = 1
+text = "PAINT BOOTH — E cycles van color"
+
+[node name="Hats" type="Node3D" parent="Stations" groups=["station"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -9)
+script = ExtResource("2_sta")
+station_id = "hats"
+
+[node name="Mesh" type="MeshInstance3D" parent="Stations/Hats"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+mesh = SubResource("BoxMesh_station")
+
+[node name="Title" type="Label3D" parent="Stations/Hats"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 0)
+billboard = 1
+text = "HAT RACK — E cycles your hat\n(the wind WILL take it)"
+
+[node name="Door" type="Node3D" parent="Stations" groups=["station"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.5, 0, 5)
+script = ExtResource("2_sta")
+station_id = "door"
+
+[node name="Mesh" type="MeshInstance3D" parent="Stations/Door"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+mesh = SubResource("BoxMesh_station")
+
+[node name="Title" type="Label3D" parent="Stations/Door"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+billboard = 1
+modulate = Color(0.4, 1, 0.5, 1)
+text = "GARAGE DOOR — E to roll out\n(host only)"
+
+[node name="Van" parent="." instance=ExtResource("4_van")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.1, 2)
+
+[node name="Cone1" parent="." instance=ExtResource("5_cone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.2, 3)
+
+[node name="Players" type="Node3D" parent="."]
+
+[node name="ShopUI" type="CanvasLayer" parent="."]
+script = ExtResource("3_shop")

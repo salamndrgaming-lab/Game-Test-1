@@ -25,7 +25,8 @@ func _physics_process(delta: float) -> void:
 	var bal: BalanceConfig = Game.balance
 	var aim := _aim_dir()
 	var origin: Vector3 = player.global_position + Vector3.UP * 1.5
-	var half_fov := deg_to_rad(bal.film_fov_degrees * 0.5)
+	var fov := bal.film_fov_degrees + (20.0 if Game.has_upgrade("cam_lens") else 0.0)
+	var half_fov := deg_to_rad(fov * 0.5)
 	var pts := 0.0
 	var caption := ""
 
@@ -58,7 +59,10 @@ func _physics_process(delta: float) -> void:
 	if pts <= 0.0:
 		return
 	var speed := Vector3(player.velocity.x, 0.0, player.velocity.z).length()
-	pts *= 1.5 if speed < 0.5 else (0.5 if speed > bal.player_move_speed else 1.0)
+	var steadiness := 1.5 if speed < 0.5 else (0.5 if speed > bal.player_move_speed else 1.0)
+	if Game.has_upgrade("cam_stabilizer"):
+		steadiness = maxf(steadiness, 1.0)  # no penalty on the move
+	pts *= steadiness
 	player.footage += pts * delta
 
 	_bucket += pts * delta

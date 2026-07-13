@@ -26,6 +26,19 @@ extends Resource
 @export var grab_spring := 40.0
 @export var grab_damping := 6.0
 @export var grab_break_distance := 3.5
+@export var winch_spring_multiplier := 3.0  # winch towing the van
+
+@export_group("Progression")  # Phase 5
+@export var upgrade_prices := {
+	"van_engine": 400,
+	"van_rollcage": 350,
+	"van_tires": 300,
+	"van_winch": 450,
+	"cam_lens": 250,
+	"cam_stabilizer": 300,
+	"cam_battery": 200,
+}
+@export var contract_multipliers: Array[float] = [1.0, 1.6, 2.6, 4.0]
 
 @export_group("Camcorder")
 @export var camera_battery_seconds := 90.0
