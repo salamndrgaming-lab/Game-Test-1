@@ -1,7 +1,13 @@
 extends Node3D
-## Phase 0/1 debug playground: players on a flat plane with grabbable props,
-## synced through the active multiplayer peer (Steam or local ENet). The
-## server spawns/despawns players; the MultiplayerSpawner replicates them.
+## Phase 0/1/2 debug playground: players on a flat plane with props and the
+## van, synced through the active multiplayer peer (Steam or local ENet).
+##
+## Spawning is explicit RPC with a ready-handshake instead of a
+## MultiplayerSpawner: the spawner pushes existing nodes to a peer the moment
+## it CONNECTS, but our clients connect while still in the menu (the scene
+## loads after), so those packets would arrive before the client scene exists
+## and get dropped. Here the client announces readiness from _ready() and the
+## server sends the roster + broadcasts the newcomer.
 
 const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
 
@@ -11,12 +17,11 @@ const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
 func _ready() -> void:
 	# Rotations set in code so the .tscn stays free of handwritten basis math.
 	$Sun.rotation_degrees = Vector3(-55.0, -30.0, 0.0)
-	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	if multiplayer.is_server():
-		_spawn(1)
-		for id in multiplayer.get_peers():
-			_spawn(id)
+		_spawn_local(1, _spawn_pos(0))
+	else:
+		_notify_ready.rpc_id(1)
 
 func _process(_delta: float) -> void:
 	status_label.text = _status_text()
@@ -56,18 +61,38 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F2:
 				SteamManager.invite_overlay()
 
-func _on_peer_connected(id: int) -> void:
-	if multiplayer.is_server():
-		_spawn(id)
+# --- Spawning -------------------------------------------------------------------
 
-func _on_peer_disconnected(id: int) -> void:
-	if multiplayer.is_server() and players.has_node(str(id)):
-		players.get_node(str(id)).queue_free()
+## Client -> server: my scene is loaded; send me the roster and spawn me.
+@rpc("any_peer", "call_remote", "reliable")
+func _notify_ready() -> void:
+	if not multiplayer.is_server():
+		return
+	var pid := multiplayer.get_remote_sender_id()
+	for existing in players.get_children():
+		_spawn_remote.rpc_id(pid, int(str(existing.name)), existing.position)
+	_spawn_remote.rpc(pid, _spawn_pos(players.get_child_count()))
 
-func _spawn(id: int) -> void:
-	if players.has_node(str(id)):
+@rpc("authority", "call_local", "reliable")
+func _spawn_remote(pid: int, pos: Vector3) -> void:
+	_spawn_local(pid, pos)
+
+func _spawn_local(pid: int, pos: Vector3) -> void:
+	if players.has_node(str(pid)):
 		return
 	var player := PLAYER_SCENE.instantiate()
-	player.name = str(id)
-	player.position = Vector3(2.0 * players.get_child_count() - 3.0, 0.2, 0.0)
+	player.name = str(pid)
+	player.position = pos
 	players.add_child(player)
+
+func _spawn_pos(idx: int) -> Vector3:
+	return Vector3(2.0 * idx - 3.0, 0.2, 0.0)
+
+func _on_peer_disconnected(id: int) -> void:
+	if multiplayer.is_server():
+		_despawn_remote.rpc(id)
+
+@rpc("authority", "call_local", "reliable")
+func _despawn_remote(pid: int) -> void:
+	if players.has_node(str(pid)):
+		players.get_node(str(pid)).queue_free()

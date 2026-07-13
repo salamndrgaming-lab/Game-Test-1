@@ -184,8 +184,9 @@ func _refill_battery() -> void:
 # --- Host-side actions --------------------------------------------------------------
 
 func _flop() -> void:
-	# Flopping inside a moving van ejects you at speed. Working as intended.
-	_enter_ragdoll(Vector3.UP * 2.0)
+	# Keep momentum plus a little hop; flopping in a moving van ejects you at
+	# speed (the van's velocity is added inside _enter_ragdoll).
+	_enter_ragdoll(velocity + Vector3.UP * 2.0)
 
 func _do_interact() -> void:
 	if state == PState.SEATED and van != null:
@@ -258,11 +259,15 @@ func _simulate_move(delta: float) -> void:
 	var pre_vel := velocity
 	move_and_slide()
 	ragdoll.follow_pose(facing)
-	# Shoving: nudge other players we walk into.
+	# Shoving players and kicking props: CharacterBody3D applies no forces on
+	# contact by itself, so both are done by hand here.
 	for i in get_slide_collision_count():
-		var other := get_slide_collision(i).get_collider()
+		var col := get_slide_collision(i)
+		var other := col.get_collider()
 		if other is Player and other.state == PState.NORMAL:
-			other.velocity += -get_slide_collision(i).get_normal() * bal.player_push_force * delta
+			other.velocity += -col.get_normal() * bal.player_push_force * delta
+		elif other is RigidBody3D and not other.freeze:
+			other.apply_central_impulse(-col.get_normal() * bal.player_kick_impulse * delta * 60.0)
 	# Big sudden deceleration (wall sprint, hard landing) -> comedy ragdoll.
 	if (velocity - pre_vel).length() > bal.ragdoll_impact_speed:
 		_enter_ragdoll(pre_vel)
@@ -285,7 +290,7 @@ func _enter_ragdoll(initial_velocity: Vector3 = Vector3.ZERO) -> void:
 	ragdoll.activate(vel)
 
 func _ragdoll_follow(delta: float) -> void:
-	global_position = ragdoll.torso_position()
+	ragdoll.hold_root_to_torso(self)
 	# A fast-flying body knocks over anyone it hits. Content.
 	if ragdoll.torso_speed() > 5.0:
 		for p in get_tree().get_nodes_in_group("players"):

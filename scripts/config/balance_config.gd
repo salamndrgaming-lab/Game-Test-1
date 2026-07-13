@@ -13,6 +13,7 @@ extends Resource
 @export var player_accel := 40.0
 @export var player_jump_velocity := 4.5
 @export var player_push_force := 8.0
+@export var player_kick_impulse := 1.5  # walking into loose props boots them
 @export var player_ragdoll_recover_seconds := 2.0
 @export var ragdoll_impact_speed := 7.0  # sudden decel above this = comedy ragdoll
 @export var mouse_sensitivity := 0.003

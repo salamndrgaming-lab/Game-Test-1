@@ -54,6 +54,18 @@ func deactivate() -> void:
 		p.angular_velocity = Vector3.ZERO
 		p.transform = _rest[part_name]
 
+## Host, RAGDOLL state: glue the player root to the torso WITHOUT dragging
+## the doll along. The parts are children of the root, and moving the parent
+## of an active RigidBody3D teleports it by the same delta — a feedback loop
+## that flings the doll to infinity. Save/restore part globals around the move.
+func hold_root_to_torso(root: Node3D) -> void:
+	var saved := {}
+	for part_name in PARTS:
+		saved[part_name] = (get_node(part_name) as RigidBody3D).global_transform
+	root.global_position = torso.global_position
+	for part_name in PARTS:
+		(get_node(part_name) as RigidBody3D).global_transform = saved[part_name]
+
 func torso_position() -> Vector3:
 	return torso.global_position
 
@@ -67,7 +79,7 @@ func is_settled() -> bool:
 	return torso.linear_velocity.length() < 0.8
 
 func _set_collide(p: RigidBody3D, on: bool) -> void:
-	# Layers: 1 world, 2 players, 4 props. Frozen pose-locked parts must not
-	# collide with anything or they'd act as moving static walls.
+	# Layers: 1 world, 2 players, 4 props, 8 vehicles. Frozen pose-locked
+	# parts must not collide with anything or they'd act as moving walls.
 	p.collision_layer = 2 if on else 0
-	p.collision_mask = 7 if on else 0
+	p.collision_mask = 15 if on else 0

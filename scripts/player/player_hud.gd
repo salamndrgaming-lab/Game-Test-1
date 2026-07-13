@@ -76,22 +76,37 @@ func _build_viewfinder() -> void:
 	rec_label.text = "REC"
 	rec_label.position = Vector2(50, 22)
 	viewfinder.add_child(rec_label)
+	# Anchored controls need explicit anchor+offset pairs: Control.position is
+	# relative to the parent's origin regardless of anchors, so "position =
+	# (-220, 22)" after a TOP_RIGHT preset would sit off the left screen edge.
 	score_label = Label.new()
-	score_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	score_label.position = Vector2(-220, 22)
-	score_label.size = Vector2(196, 24)
+	score_label.anchor_left = 1.0
+	score_label.anchor_right = 1.0
+	score_label.offset_left = -260.0
+	score_label.offset_right = -24.0
+	score_label.offset_top = 22.0
+	score_label.offset_bottom = 48.0
 	score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	score_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	viewfinder.add_child(score_label)
 	battery_bar = ProgressBar.new()
-	battery_bar.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	battery_bar.position = Vector2(26, -46)
-	battery_bar.size = Vector2(220, 20)
+	battery_bar.anchor_top = 1.0
+	battery_bar.anchor_bottom = 1.0
+	battery_bar.offset_left = 26.0
+	battery_bar.offset_top = -46.0
+	battery_bar.offset_right = 246.0
+	battery_bar.offset_bottom = -26.0
 	battery_bar.show_percentage = false
+	battery_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	viewfinder.add_child(battery_bar)
 	var batt_label := Label.new()
 	batt_label.text = "BATT"
-	batt_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	batt_label.position = Vector2(26, -70)
+	batt_label.anchor_top = 1.0
+	batt_label.anchor_bottom = 1.0
+	batt_label.offset_left = 26.0
+	batt_label.offset_top = -70.0
+	batt_label.offset_right = 120.0
+	batt_label.offset_bottom = -50.0
 	viewfinder.add_child(batt_label)
 
 # --- Emote wheel -----------------------------------------------------------------
@@ -123,10 +138,15 @@ func _pick_emote(id: int) -> void:
 	_set_wheel(false)
 
 func _build_wheel() -> void:
+	# CenterContainer keeps the wheel centered whatever size layout gives it
+	# (a CENTER preset applied before children exist anchors a zero-size box).
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(center)
 	wheel = PanelContainer.new()
 	wheel.visible = false
-	add_child(wheel)
-	wheel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	center.add_child(wheel)
 	var vb := VBoxContainer.new()
 	wheel.add_child(vb)
 	var title := Label.new()

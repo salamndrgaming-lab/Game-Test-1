@@ -230,3 +230,59 @@ ragdolls out.**
   fine on loopback, will stutter over real Steam P2P; noted for Phase 4/6.
 - Riding the roof unseated (standing on the moving chassis) is physically
   possible but janky — the roof *seat slot* is the reliable option.
+
+---
+
+## Static code review pass (2026-07-13)
+
+Full re-read of every script and scene before Phase 3, since nothing has
+been executed yet. Found and fixed:
+
+### Critical (would have failed the gate tests)
+
+1. **Multiplayer spawn race** — `MultiplayerSpawner` pushes existing players
+   to a peer the moment it *connects*, but clients connect while still in
+   the menu (the NetTest scene loads after). The host-player spawn packet
+   would arrive before the client's scene existed and be dropped — the
+   client would never see the host. Replaced the spawner with explicit
+   RPC spawning + a ready-handshake (client announces from `_ready()`,
+   server sends the roster and broadcasts the newcomer).
+2. **Ragdoll runaway feedback** — the player root followed the torso each
+   tick, but the ragdoll parts are children of that root, and moving the
+   parent of an active RigidBody3D teleports it by the same delta → the
+   doll would rocket to infinity in ~1 second. Root now saves/restores the
+   parts' global transforms around the move (`hold_root_to_torso`).
+
+### High
+
+3. **Collision masks missing the vehicle layer** — player capsule, ragdoll
+   parts, cones and crates had mask 7 (world|players|props) but the van
+   chassis is layer 8: players would walk/fall straight through the van and
+   couldn't stand on the roof; the van would drive through props. All now 15.
+4. **HUD controls off-screen** — `Control.position` is relative to the
+   parent's origin regardless of anchors, so placing the footage label at
+   `(-220, 22)` after a TOP_RIGHT preset put it off the left screen edge
+   (same for the battery bar, bottom-left). Rewritten with explicit
+   anchor+offset pairs.
+
+### Medium / low
+
+5. CharacterBody3D applies no forces on contact, so walking into a cone did
+   nothing — added a manual kick impulse on slide collisions
+   (`player_kick_impulse` in balance.tres). Same physics gap meant a
+   speeding van just stopped against a pedestrian — the van now ragdolls
+   any standing player within 2.8 m at speed (roof riders exempt).
+6. Flop (X) discarded running momentum — now keeps velocity plus a hop.
+7. Emote wheel was anchored as a zero-size box (CENTER preset applied
+   before children existed) — now wrapped in a CenterContainer.
+8. `_seat_marker` used ternary return with implicit Node→Node3D casts —
+   made explicit.
+
+### Still unverifiable from here (unchanged, flagged since earlier phases)
+
+- GodotSteam `steamInitEx` signature and `SteamMultiplayerPeer`
+  `create_host/create_client` API vary by extension version.
+- Door hinge axis orientation and van steering/throttle sign are
+  convention guesses — one-line flips if wrong.
+- VehicleBody3D feel, pin-joint floppiness, and all "is it funny" checks
+  need a real playtest.

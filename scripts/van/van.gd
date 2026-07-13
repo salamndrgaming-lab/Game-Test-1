@@ -47,6 +47,22 @@ func _physics_process(delta: float) -> void:
 	_update_seats()
 	_apply_driver_input(delta)
 	_update_damage()
+	_bonk_pedestrians()
+
+## Rigid contacts don't move CharacterBody3D, so a speeding van would just
+## stop dead against a standing player. Instead: anyone standing too close to
+## a fast van gets ragdolled with its velocity. Roof riders (well above the
+## chassis origin) are exempt.
+func _bonk_pedestrians() -> void:
+	if linear_velocity.length() < 4.0:
+		return
+	for p in get_tree().get_nodes_in_group("players"):
+		if p.state != p.PState.NORMAL:
+			continue
+		if p.global_position.y > global_position.y + 1.8:
+			continue
+		if p.global_position.distance_to(global_position) < 2.8:
+			p._enter_ragdoll(linear_velocity * 1.1 + Vector3.UP * 2.5)
 
 func _process(_delta: float) -> void:
 	_update_visuals_and_audio()
@@ -91,7 +107,9 @@ func exit_player(p: Node, eject := false) -> void:
 		p._enter_ragdoll(linear_velocity)
 
 func _seat_marker(slot: String) -> Node3D:
-	return $Seats.get_node(slot) if slot != "" and $Seats.has_node(slot) else $Seats/driver
+	if slot != "" and $Seats.has_node(slot):
+		return $Seats.get_node(slot) as Node3D
+	return $Seats.get_node("driver") as Node3D
 
 func _update_seats() -> void:
 	for slot in seats.keys():
