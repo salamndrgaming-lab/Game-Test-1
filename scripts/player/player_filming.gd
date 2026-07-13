@@ -17,6 +17,10 @@ func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server():
 		return
 	if not player.filming or player.dead or player.state == player.PState.RAGDOLL:
+		# Reset the best-second bucket so a partial old second can't pad the
+		# next filming session's first second.
+		_bucket = 0.0
+		_bucket_t = 0.0
 		return
 	var bal: BalanceConfig = Game.balance
 	var aim := _aim_dir()

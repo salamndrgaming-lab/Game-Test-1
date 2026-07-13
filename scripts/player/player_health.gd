@@ -43,7 +43,10 @@ func _die() -> void:
 		player._enter_ragdoll()
 	var mgr := get_tree().get_first_node_in_group("run_manager")
 	if mgr != null and player.footage > 0.0:
-		mgr.spawn_pickup(player.global_position + Vector3.UP * 0.5, player.footage)
+		# Drop at ground level: dying mid-orbit would otherwise leave the
+		# pickup floating 40m up in the funnel, unreachable. Map is flat.
+		var drop := Vector3(player.global_position.x, 0.5, player.global_position.z)
+		mgr.spawn_pickup(drop, player.footage)
 	player.footage = 0.0
 
 func _respawn() -> void:

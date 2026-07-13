@@ -36,6 +36,8 @@ func change_state(next: int) -> void:
 		push_warning("Game: no scene wired for state %s yet." % State.keys()[next])
 		return
 	state = next
+	if multiplayer.is_server():
+		SteamManager.set_session_joinable(next == State.LOBBY)
 	# Deferred so we never swap scenes mid-signal.
 	get_tree().change_scene_to_file.call_deferred(path)
 

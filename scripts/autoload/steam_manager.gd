@@ -91,6 +91,17 @@ func invite_overlay() -> void:
 	if steam_ok and lobby_id != 0:
 		steam.activateGameOverlayInviteDialog(lobby_id)
 
+## Design rule: players may only join in the lobby/garage, never mid-run —
+## late joins break the spawn handshake and the high-level multiplayer.
+## The host locks the session on run start and unlocks it back in the lobby.
+func set_session_joinable(joinable: bool) -> void:
+	if not is_host:
+		return
+	if multiplayer.multiplayer_peer != null:
+		multiplayer.multiplayer_peer.refuse_new_connections = not joinable
+	if steam_ok and lobby_id != 0:
+		steam.setLobbyJoinable(lobby_id, joinable)
+
 # --- Public API: local ENet fallback (dev testing only, never ships) ---------
 
 func host_local() -> void:

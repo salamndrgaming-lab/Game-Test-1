@@ -36,6 +36,18 @@ func _physics_process(delta: float) -> void:
 	if multiplayer.is_server():
 		_update_run(delta)
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		# Same convention as the lobby: first ESC frees the mouse, second
+		# leaves the session (host leaving ends the run for everyone).
+		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		else:
+			SteamManager.leave_session()
+	elif event is InputEventMouseButton and event.pressed \
+			and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
 func _process(_delta: float) -> void:
 	var inten: float = tornado.intensity if tornado.active else 0.0
 	# Sky darkens as the storm intensifies (telegraphs the F-rating).

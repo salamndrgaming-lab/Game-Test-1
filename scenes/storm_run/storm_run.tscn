@@ -1,4 +1,4 @@
-[gd_scene load_steps=30 format=3]
+[gd_scene load_steps=31 format=3]
 
 [ext_resource type="Script" path="res://scripts/storm_run/storm_run.gd" id="1_run"]
 [ext_resource type="PackedScene" path="res://scenes/tornado/tornado.tscn" id="2_tor"]

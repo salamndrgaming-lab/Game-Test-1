@@ -54,6 +54,7 @@ func is_local() -> bool:
 
 func _ready() -> void:
 	add_to_group("players")
+	hp = Game.balance.player_max_hp
 	$NameTag.text = "P%s" % name
 	var hue := float(hash(str(name)) % 256) / 256.0
 	ragdoll.tint(Color.from_hsv(hue, 0.6, 0.95))

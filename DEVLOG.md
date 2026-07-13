@@ -353,3 +353,36 @@ Practical testing notes:
   Phase 6 polish list or a Phase 3.5 if you want them sooner.
 - Dead players spectate their own corpse (camera follows the ragdoll).
   Acceptable for now; a proper spectate cam can come with Phase 5 polish.
+
+---
+
+## Static review pass #2 (2026-07-13, post-Phase 3)
+
+Re-read of the Phase 3 code and its interactions with earlier phases.
+Fixed:
+
+1. **Floating footage pickups** — dying mid-orbit dropped the camera at
+   your death position, i.e. potentially 40 m up inside the funnel,
+   unreachable forever. Pickups now drop at ground level under the death
+   point (map is flat; a rooftop death drops it beside the building).
+2. **No ESC in storm runs** — the run scene had no input handler: mouse
+   stayed captured and there was no way to leave a run. Same ESC
+   convention as the lobby now (free mouse → leave session).
+3. **Mid-run joins weren't blocked** — the design doc forbids late joins
+   (they break the spawn handshake and Godot's high-level multiplayer).
+   The host now locks the session on leaving the lobby:
+   `refuse_new_connections` on the peer + `setLobbyJoinable(false)` on the
+   Steam lobby, unlocked on returning to the lobby.
+4. **hp ignored balance.tres** — spawned players had a hardcoded 100
+   regardless of `player_max_hp`; now initialized from balance.
+5. **Best-clip bucket bleed** — the scoring second-bucket didn't reset when
+   you stopped filming, so a stale partial second padded the next clip's
+   first second. Reset on any non-scoring frame.
+6. Cosmetic: storm_run.tscn load_steps count corrected.
+
+Checked and fine (for the record): RPC ordering of results-then-scene-change
+(same reliable channel), seat cleanup for disconnecting players, dead
+players excluded from suction re-ragdoll and extraction checks,
+tornado-immune seated players (the van takes the forces, as designed),
+duck-typed cross-script access compiles as dynamic lookup with warnings
+(not errors) under GDScript's UNSAFE_* rules.
