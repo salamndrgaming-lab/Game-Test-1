@@ -566,3 +566,43 @@ new map.
   mini version.
 - Cell count × suction loops = more host physics work; if a 5-cell
   forecast chugs, cap concurrent active cells in balance later.
+
+---
+
+## Phase 5.6 — Procedural county (2026-07-14)
+
+The terrain layout now rolls with the weather. `generate_forecast()` adds a
+layout seed; `MapGen` (new node in the run scene) builds the county from it
+deterministically on every peer — identical geometry, identical node names,
+so the physics props' synchronizers line up with zero spawn RPCs.
+
+Generated per run:
+- 4–6 farmsteads (house + usually a barn with a loose plank pile + crates),
+  randomly rotated
+- gas station with cone/crate clutter, water tower, trailer park (3–5
+  trailers), 2–3 corn fields of random size/orientation
+- ~40 trees (trunk collision, foliage cosmetic)
+- placement respects clearances: HQ driveway (70 m), deploy points (30 m),
+  structure spacing via rejection sampling
+
+Fixed anchors that do NOT move: CHASER HQ (home doesn't move), the ground
+plane, and the deploy candidate pool. The hand-placed buildings were
+removed from storm_run.tscn; it's now just ground/sky/HQ/van + generated
+content.
+
+### How to test
+Two runs back-to-back: layouts must differ between runs but match between
+the two windows in the same run (drive to a barn — both windows see the
+same barn; both see the same planks fly). If windows ever disagree on a
+building, that's an RNG determinism bug — report immediately.
+
+### Known jank
+- Untested, as with everything (this batch adds runtime mesh building —
+  watch for first-frame hitching on run start; if noticeable, we can
+  spread generation over a few frames later).
+- Buildings can still spawn inside a storm cell's wander leash — that's
+  intended (debris), but a farmstead directly on top of a deploy point's
+  30 m clearance edge might make for a cramped start. Tune clearances in
+  map_gen.gd if so.
+- Trees are static; the tornado doesn't uproot them yet. Cheap future win:
+  swap close-range trees for rigidbody versions when a cell approaches.

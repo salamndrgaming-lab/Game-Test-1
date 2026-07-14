@@ -1,10 +1,8 @@
-[gd_scene load_steps=32 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/storm_run/storm_run.gd" id="1_run"]
 [ext_resource type="PackedScene" path="res://scenes/van/van.tscn" id="3_van"]
-[ext_resource type="PackedScene" path="res://scenes/props/traffic_cone.tscn" id="4_cone"]
-[ext_resource type="PackedScene" path="res://scenes/props/crate.tscn" id="5_crate"]
-[ext_resource type="PackedScene" path="res://scenes/props/plank.tscn" id="6_plank"]
+[ext_resource type="Script" path="res://scripts/storm_run/map_gen.gd" id="7_map"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_ground"]
 size = Vector3(1000, 1, 1000)
@@ -23,61 +21,6 @@ sky = SubResource("Sky_sr")
 
 [sub_resource type="StandardMaterial3D" id="Mat_bld"]
 albedo_color = Color(0.68, 0.6, 0.52, 1)
-
-[sub_resource type="BoxMesh" id="BoxMesh_farm"]
-material = SubResource("Mat_bld")
-size = Vector3(10, 6, 8)
-
-[sub_resource type="BoxShape3D" id="BoxShape_farm"]
-size = Vector3(10, 6, 8)
-
-[sub_resource type="StandardMaterial3D" id="Mat_barn"]
-albedo_color = Color(0.62, 0.22, 0.18, 1)
-
-[sub_resource type="BoxMesh" id="BoxMesh_barn"]
-material = SubResource("Mat_barn")
-size = Vector3(12, 8, 10)
-
-[sub_resource type="BoxShape3D" id="BoxShape_barn"]
-size = Vector3(12, 8, 10)
-
-[sub_resource type="BoxMesh" id="BoxMesh_gas"]
-material = SubResource("Mat_bld")
-size = Vector3(12, 5, 10)
-
-[sub_resource type="BoxShape3D" id="BoxShape_gas"]
-size = Vector3(12, 5, 10)
-
-[sub_resource type="CylinderMesh" id="Cyl_tank"]
-material = SubResource("Mat_bld")
-top_radius = 3.0
-bottom_radius = 3.0
-height = 8.0
-
-[sub_resource type="CylinderShape3D" id="CylShape_tank"]
-radius = 3.0
-height = 8.0
-
-[sub_resource type="BoxMesh" id="BoxMesh_pole"]
-material = SubResource("Mat_bld")
-size = Vector3(1.2, 12, 1.2)
-
-[sub_resource type="BoxShape3D" id="BoxShape_pole"]
-size = Vector3(1.2, 12, 1.2)
-
-[sub_resource type="BoxMesh" id="BoxMesh_trailer"]
-material = SubResource("Mat_bld")
-size = Vector3(3, 3, 9)
-
-[sub_resource type="BoxShape3D" id="BoxShape_trailer"]
-size = Vector3(3, 3, 9)
-
-[sub_resource type="StandardMaterial3D" id="Mat_corn"]
-albedo_color = Color(0.25, 0.42, 0.14, 1)
-
-[sub_resource type="PlaneMesh" id="Plane_corn"]
-material = SubResource("Mat_corn")
-size = Vector2(200, 200)
 
 [sub_resource type="BoxMesh" id="BoxMesh_home"]
 material = SubResource("Mat_bld")
@@ -122,82 +65,8 @@ mesh = SubResource("BoxMesh_ground")
 [node name="Shape" type="CollisionShape3D" parent="Ground"]
 shape = SubResource("BoxShape_ground")
 
-[node name="Farmhouse" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 3, -300)
-
-[node name="Mesh" type="MeshInstance3D" parent="Farmhouse"]
-mesh = SubResource("BoxMesh_farm")
-
-[node name="Shape" type="CollisionShape3D" parent="Farmhouse"]
-shape = SubResource("BoxShape_farm")
-
-[node name="Barn" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 250, 4, -350)
-
-[node name="Mesh" type="MeshInstance3D" parent="Barn"]
-mesh = SubResource("BoxMesh_barn")
-
-[node name="Shape" type="CollisionShape3D" parent="Barn"]
-shape = SubResource("BoxShape_barn")
-
-[node name="GasStation" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -300, 2.5, 200)
-
-[node name="Mesh" type="MeshInstance3D" parent="GasStation"]
-mesh = SubResource("BoxMesh_gas")
-
-[node name="Shape" type="CollisionShape3D" parent="GasStation"]
-shape = SubResource("BoxShape_gas")
-
-[node name="WaterTower" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 0, -400)
-
-[node name="PoleMesh" type="MeshInstance3D" parent="WaterTower"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 0)
-mesh = SubResource("BoxMesh_pole")
-
-[node name="PoleShape" type="CollisionShape3D" parent="WaterTower"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 0)
-shape = SubResource("BoxShape_pole")
-
-[node name="TankMesh" type="MeshInstance3D" parent="WaterTower"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 16, 0)
-mesh = SubResource("Cyl_tank")
-
-[node name="TankShape" type="CollisionShape3D" parent="WaterTower"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 16, 0)
-shape = SubResource("CylShape_tank")
-
-[node name="Trailer1" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 300, 1.5, 300)
-
-[node name="Mesh" type="MeshInstance3D" parent="Trailer1"]
-mesh = SubResource("BoxMesh_trailer")
-
-[node name="Shape" type="CollisionShape3D" parent="Trailer1"]
-shape = SubResource("BoxShape_trailer")
-
-[node name="Trailer2" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 310, 1.5, 305)
-
-[node name="Mesh" type="MeshInstance3D" parent="Trailer2"]
-mesh = SubResource("BoxMesh_trailer")
-
-[node name="Shape" type="CollisionShape3D" parent="Trailer2"]
-shape = SubResource("BoxShape_trailer")
-
-[node name="Trailer3" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 320, 1.5, 310)
-
-[node name="Mesh" type="MeshInstance3D" parent="Trailer3"]
-mesh = SubResource("BoxMesh_trailer")
-
-[node name="Shape" type="CollisionShape3D" parent="Trailer3"]
-shape = SubResource("BoxShape_trailer")
-
-[node name="CornField" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 0.05, 200)
-mesh = SubResource("Plane_corn")
+[node name="MapGen" type="Node3D" parent="."]
+script = ExtResource("7_map")
 
 [node name="Home" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 450, 0, 450)
@@ -221,40 +90,6 @@ billboard = 1
 font_size = 72
 text = "CHASER HQ
 footage uploads in the driveway"
-
-[node name="Planks" type="Node3D" parent="."]
-
-[node name="Plank1" parent="Planks" instance=ExtResource("6_plank")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 243, 0.3, -344)
-
-[node name="Plank2" parent="Planks" instance=ExtResource("6_plank")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 245, 0.3, -356)
-
-[node name="Plank3" parent="Planks" instance=ExtResource("6_plank")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 0.3, -346)
-
-[node name="Plank4" parent="Planks" instance=ExtResource("6_plank")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 257, 0.3, -355)
-
-[node name="Plank5" parent="Planks" instance=ExtResource("6_plank")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 250, 0.3, -342)
-
-[node name="Plank6" parent="Planks" instance=ExtResource("6_plank")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 252, 0.3, -358)
-
-[node name="Props" type="Node3D" parent="."]
-
-[node name="Cone1" parent="Props" instance=ExtResource("4_cone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -294, 0.2, 194)
-
-[node name="Cone2" parent="Props" instance=ExtResource("4_cone")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -292, 0.2, 197)
-
-[node name="Crate1" parent="Props" instance=ExtResource("5_crate")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -306, 0.5, 195)
-
-[node name="Crate2" parent="Props" instance=ExtResource("5_crate")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -305, 0.5, 197)
 
 [node name="Van" parent="." instance=ExtResource("3_van")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 445, 0.1, 435)

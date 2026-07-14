@@ -128,6 +128,7 @@ func generate_forecast() -> void:
 	forecast = {
 		"heavy": {"x": heavy.x, "z": heavy.y},
 		"cells": cells, "deploys": picks, "selected": 1,
+		"seed": rng.randi(),  # the county layout rolls with the weather
 	}
 	sync_forecast.rpc(forecast)
 

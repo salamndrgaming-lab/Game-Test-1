@@ -32,6 +32,8 @@ func _ready() -> void:
 	$Sun.rotation_degrees = Vector3(-55.0, -30.0, 0.0)
 	if multiplayer.is_server() and Game.forecast.is_empty():
 		Game.generate_forecast()  # dev fallback; the garage normally rolls it
+	# The county layout rolls with the weather — same synced seed everywhere.
+	$MapGen.generate(int(Game.forecast.get("seed", 12345)))
 	_spawn_cells()
 	var dep := _deploy()
 	$Van.position = Vector3(dep.x, 0.1, dep.y - 8.0)
