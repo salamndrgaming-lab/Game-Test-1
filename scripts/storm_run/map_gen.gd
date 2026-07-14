@@ -63,11 +63,13 @@ func _farmstead() -> void:
 		var bp := p + Vector2(_rng.randf_range(20.0, 35.0), _rng.randf_range(-15.0, 15.0))
 		_static_box(Vector3(bp.x, 4.0, bp.y), Vector3(12, 8, 10), Color(0.62, 0.22, 0.18), rot)
 		for i in _rng.randi_range(4, 7):
-			_prop(PLANK, "plank",
-					Vector3(bp.x + _rng.randf_range(-9.0, 9.0), 0.3, bp.y + _rng.randf_range(-9.0, 9.0)))
+			# Ring placement: radius 8+ clears the 12x10 barn footprint, so no
+			# plank ever spawns embedded inside the solid box (physics pop).
+			var pp := bp + _ring_offset(8.0, 14.0)
+			_prop(PLANK, "plank", Vector3(pp.x, 0.3, pp.y))
 	if _rng.randf() < 0.5:
-		_prop(CRATE, "crate",
-				Vector3(p.x + _rng.randf_range(-10.0, 10.0), 0.5, p.y + _rng.randf_range(-10.0, 10.0)))
+		var cp := p + _ring_offset(8.0, 13.0)  # clears the 10x8 house footprint
+		_prop(CRATE, "crate", Vector3(cp.x, 0.5, cp.y))
 
 func _gas_station() -> void:
 	var p := _find_spot(70.0)
@@ -153,6 +155,10 @@ func _tree() -> void:
 	leaves_mesh.position = Vector3(0, h + leaves.radius * 0.4, 0)
 	body.add_child(leaves_mesh)
 	add_child(body)
+
+func _ring_offset(r_min: float, r_max: float) -> Vector2:
+	var ang := _rng.randf_range(0.0, TAU)
+	return Vector2(cos(ang), sin(ang)) * _rng.randf_range(r_min, r_max)
 
 # --- Builders -----------------------------------------------------------------
 

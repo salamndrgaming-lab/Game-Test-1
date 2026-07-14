@@ -606,3 +606,35 @@ building, that's an RNG determinism bug — report immediately.
   map_gen.gd if so.
 - Trees are static; the tornado doesn't uproot them yet. Cheap future win:
   swap close-range trees for rigidbody versions when a cell approaches.
+
+---
+
+## Static review pass #4 (2026-07-14, post-Phase 5.5/5.6)
+
+Focused on the forecast system, crew roles, HQ upload, and the procedural
+county. Fixed:
+
+1. **Props spawned inside solid buildings** — barn planks were scattered
+   within ±9 m of the barn center, but the barn footprint is 12×10 m, so
+   many planks generated embedded in the static box (physics jam or
+   first-tick explosion). Farmstead crates had the same ~20% overlap with
+   the house. Both now use ring placement at a radius guaranteed to clear
+   the footprint.
+
+Audited and clean:
+- RNG determinism in map_gen: every branch decision comes from the shared
+  seeded RNG, so all peers take identical paths and consume identical
+  draws; early-outs (tree rejection, no-room fallback) branch on
+  deterministic data only. Prop names are sequence-numbered, so
+  synchronizer paths match across peers.
+- The forecast reaches clients before they ever need it: synced on garage
+  entry, on join, on deploy selection, and (dev sandbox) explicitly before
+  the scene-change RPC on the same ordered channel.
+- Upload/finish logic: seated players in the driveway upload through the
+  van (their synced position rides the seat); an all-dead crew ends the
+  run immediately; AFK stragglers are bounded by the timer.
+- Role economy guards: spotter cut skips self-calls and departed
+  navigators; driver cut skips the driver filming from their own seat;
+  called-cell bonus only applies to the cell actually being filmed.
+- Pending cells are hidden, silent (wind fades to -60 dB), and exert no
+  forces; the label's "quiet for now" covers gaps between cells.
