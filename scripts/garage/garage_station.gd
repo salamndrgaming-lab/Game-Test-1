@@ -1,5 +1,5 @@
 extends Node3D
-## An interactable garage station (contracts board, shop bench, paint booth,
+## An interactable garage station (weather radar, shop bench, paint booth,
 ## hat rack, garage door). Player E-interact resolves on the host, which
 ## calls use(); the garage manager does the actual work.
 

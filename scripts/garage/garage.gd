@@ -1,33 +1,41 @@
 extends PlayerSpawnManager
-## The garage: hub between runs. Walk around, spend crew money, pick a
-## contract, put on a stupid hat, then hit the garage door to roll out.
-## Doubles as the lobby — this is the only place players can join.
+## The garage: hub between runs. Walk around, spend crew money, review the
+## weather radar and pick a deploy spot, put on a stupid hat, then hit the
+## garage door to roll out. Doubles as the lobby — the only place to join.
 
-const CONTRACT_NAMES := {
-	1: "F1 — DUST DEVIL DAYCARE",
-	2: "F2 — BABY'S FIRST WALL CLOUD",
-	3: "F3 — COUNTY FAIR CANCELLED",
-	4: "F4 — THE FINGER OF GOD",
-}
-
-@onready var contract_label: Label3D = $Stations/Contracts/Info
+@onready var radar_label: Label3D = $Stations/Radar/Info
 @onready var money_label: Label3D = $MoneySign
 @onready var shop_ui: CanvasLayer = $ShopUI
+@onready var radar_ui: CanvasLayer = $RadarUI
 
 func _ready() -> void:
 	super._ready()
 	add_to_group("garage_manager")
 	$Sun.rotation_degrees = Vector3(-50.0, 20.0, 0.0)
+	if multiplayer.is_server():
+		Game.generate_forecast()  # fresh weather every garage visit
 
 func _process(_delta: float) -> void:
-	var mult: float = Game.balance.contract_multipliers[clampi(Game.contract_tier - 1, 0, 3)]
-	contract_label.text = "%s\npayout x%.1f — E to change" % [CONTRACT_NAMES[Game.contract_tier], mult]
+	radar_label.text = _forecast_summary()
 	money_label.text = "CREW MONEY: $%d" % Game.crew_money
+
+func _forecast_summary() -> String:
+	var f: Dictionary = Game.forecast
+	if f.is_empty():
+		return "radar warming up..."
+	var worst := 0.0
+	for c in f.get("cells", []):
+		worst = maxf(worst, float(c.peak))
+	var deploys: Array = f.get("deploys", [])
+	var sel := clampi(int(f.get("selected", 0)), 0, maxi(deploys.size() - 1, 0))
+	var label: String = String(deploys[sel].label) if not deploys.is_empty() else "?"
+	return "%d cells inbound, worst F%d\nDeploy: %s — E to review" \
+			% [f.get("cells", []).size(), int(round(worst)), label]
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed \
 			and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED \
-			and not PauseMenu.is_open and not shop_ui.is_open:
+			and not PauseMenu.is_open and not shop_ui.is_open and not radar_ui.is_open:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _spawn_pos(idx: int) -> Vector3:
@@ -37,9 +45,11 @@ func _spawn_pos(idx: int) -> Vector3:
 
 func station_used(id: String, player: Node) -> void:
 	match id:
-		"contracts":
-			Game.contract_tier = Game.contract_tier % 4 + 1
-			Game.broadcast_progress()
+		"radar":
+			if player.peer_id() == 1:
+				_open_radar()
+			else:
+				_open_radar.rpc_id(player.peer_id())
 		"paint":
 			Game.van_paint = (Game.van_paint + 1) % 5
 			Game.broadcast_progress()
@@ -58,6 +68,22 @@ func station_used(id: String, player: Node) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _open_shop() -> void:
 	shop_ui.open()
+
+@rpc("authority", "call_remote", "reliable")
+func _open_radar() -> void:
+	radar_ui.open()
+
+@rpc("any_peer", "call_remote", "reliable")
+func _request_deploy(idx: int) -> void:
+	if multiplayer.is_server():
+		select_deploy(idx)
+
+func select_deploy(idx: int) -> void:  # host
+	var deploys: Array = Game.forecast.get("deploys", [])
+	if deploys.is_empty():
+		return
+	Game.forecast["selected"] = clampi(idx, 0, deploys.size() - 1)
+	Game.sync_forecast.rpc(Game.forecast)
 
 # --- Purchases (crew wallet, host validates) ---------------------------------------
 

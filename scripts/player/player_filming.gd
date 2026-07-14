@@ -1,7 +1,13 @@
 extends Node
-## Host-side footage scoring (Phase 3 — replaces the Phase 1 HUD stub).
-## While the player films, points per second scale with tornado-in-frame ×
-## proximity × intensity × subject bonuses, times a steadiness multiplier.
+## Host-side footage scoring. Points/sec scale with the best in-frame storm
+## cell × proximity × intensity, plus subject bonuses (friend flung, van
+## airborne), times a steadiness multiplier.
+##
+## Role economy (everyone contributes):
+##  - Filming the navigator's CALLED cell pays a bonus, and the navigator
+##    earns a cut of it (they found the shot).
+##  - Filming from a moving van pays the driver a cut (they made the shot
+##    possible).
 ## The best single second and its caption feed the results screen.
 
 var best_second := 0.0
@@ -30,15 +36,24 @@ func _physics_process(delta: float) -> void:
 	var pts := 0.0
 	var caption := ""
 
-	var tor: Node3D = get_tree().get_first_node_in_group("tornado")
-	if tor != null and tor.active:
+	# Best in-frame storm cell (several can be live at once).
+	var best_tor: Node = null
+	var best_tor_pts := 0.0
+	for tor in get_tree().get_nodes_in_group("tornado"):
+		if not tor.active:
+			continue
 		var to: Vector3 = tor.global_position + Vector3.UP * 20.0 - origin
 		var dist := to.length()
-		if dist < bal.film_max_range and aim.angle_to(to) < half_fov:
-			# The best footage is filmed from inside the danger rings.
-			var proximity := 1.0 + 3.0 * clampf(1.0 - dist / bal.tornado_outer_radius, 0.0, 1.0)
-			pts += bal.footage_base_points_per_second * tor.intensity * proximity
+		if dist >= bal.film_max_range or aim.angle_to(to) >= half_fov:
+			continue
+		# The best footage is filmed from inside the danger rings.
+		var proximity := 1.0 + 3.0 * clampf(1.0 - dist / bal.tornado_outer_radius, 0.0, 1.0)
+		var cell_pts: float = bal.footage_base_points_per_second * tor.intensity * proximity
+		if cell_pts > best_tor_pts:
+			best_tor_pts = cell_pts
+			best_tor = tor
 			caption = "the tornado, WAY too close" if dist < bal.tornado_middle_radius else "the tornado"
+	pts += best_tor_pts
 
 	for p in get_tree().get_nodes_in_group("players"):
 		if p == player:
@@ -63,8 +78,21 @@ func _physics_process(delta: float) -> void:
 	if Game.has_upgrade("cam_stabilizer"):
 		steadiness = maxf(steadiness, 1.0)  # no penalty on the move
 	pts *= steadiness
-	player.footage += pts * delta
 
+	# Navigator's call: bonus for shooting the called cell, cut for the caller.
+	var mgr := get_tree().get_first_node_in_group("run_manager")
+	if best_tor != null and mgr != null and mgr.called_cell == best_tor.cell_index:
+		pts *= bal.called_bonus
+		var spotter := _player_by_id(mgr.called_by)
+		if spotter != null and spotter != player:
+			spotter.footage += pts * bal.spotter_cut * delta
+	# Wheelman's cut: shots taken from someone's van pay the driver.
+	if player.state == player.PState.SEATED and player.van != null:
+		var drv := _player_by_id(int(player.van.seats.get("driver", 0)))
+		if drv != null and drv != player:
+			drv.footage += pts * bal.driver_cut * delta
+
+	player.footage += pts * delta
 	_bucket += pts * delta
 	_bucket_t += delta
 	if caption != "":
@@ -75,6 +103,12 @@ func _physics_process(delta: float) -> void:
 			best_caption = _bucket_caption
 		_bucket = 0.0
 		_bucket_t = 0.0
+
+func _player_by_id(pid: int) -> Node:
+	for p in get_tree().get_nodes_in_group("players"):
+		if str(p.name) == str(pid):
+			return p
+	return null
 
 func _aim_dir() -> Vector3:
 	return Vector3(0, 0, -1).rotated(Vector3.RIGHT, player.input_pitch).rotated(Vector3.UP, player.input_yaw)

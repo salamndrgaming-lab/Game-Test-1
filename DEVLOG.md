@@ -495,3 +495,74 @@ steals hats from seated players through the permanently-open side door,
 which is canon now; JSON round-trips of the upgrades dictionary preserve
 string keys and bool values; the pause menu's dim layer blocks scene
 click-to-recapture while open.
+
+---
+
+## Phase 5.5 — Weather radar, deploy choice, crew roles, real extraction (2026-07-14)
+
+Three design changes requested after the gameplay-loop review:
+
+### 1. Random weather replaces the contracts board
+
+- Every garage visit the host rolls a **forecast**: 3–5 storm cells at
+  random map positions, activating on staggered timers with ramp-up /
+  hold / ramp-out envelopes — **multiple tornadoes can be live at once**.
+- A random **heavy area** anchors the system: cells spawn stronger the
+  closer they are to it (F1 dust devils at the fringe, F4 monsters in the
+  core). The old fixed F1→F4 ramp and payout multipliers are gone —
+  severity now pays through the existing intensity × proximity scoring.
+- The garage's **WEATHER RADAR** station opens a drawn radar screen:
+  green→red cell blobs with F-ratings, the heavy area shading, HQ, and
+  the deploy points. Tornadoes wander leashed to their cell (~160 m).
+
+### 2. Deploy choice = severity choice
+
+- The forecast picks **three deploy points** (from candidates across the
+  map), scored by proximity-weighted cell strength and labeled
+  **MILD / SPICY / DEATHWISH**. Anyone can select one on the radar; the
+  crew + van spawn there. Want an easy night? Deploy MILD and drive to
+  what you can handle. Want money? DEATHWISH drops you next to the core.
+
+### 3. Every seat is a role
+
+- **Driver (wheelman)**: earns a 20% cut of all footage filmed from their
+  moving van — chauffeuring the camera crew is a paying job.
+- **Passenger (navigator)**: holds **TAB** for the live radar (active
+  cells, the van, yourself) and presses **F** to *call* the strongest
+  cell. Filming a called cell pays a 25% bonus and the navigator earns a
+  10% cut of it. Calls last 45 s.
+- **Rear seats / on foot (camera ops)**: film, as ever.
+- Solo players are simply all roles at once; nothing is gated.
+
+### 4. Extraction is now just... going home
+
+- The green beam is dead. The map corner has **CHASER HQ** — a building
+  with a driveway. When the last cell blows out, the prompt is "head
+  home"; footage **uploads over the garage wifi** at ~250 pts/s while
+  you're in the driveway (you watch your unsaved counter drain into
+  banked). Run ends when everyone alive has uploaded, or the timer
+  expires and stragglers eat the loss.
+
+### How to test
+
+Garage → radar station: confirm both windows show the same forecast and
+that deploy selection syncs. Run: confirm cells activate over time (watch
+the radar from the passenger seat with TAB), F calls flash a ring on the
+radar and boost scoring, the driver's footage ticks up while a passenger
+films, and going home uploads footage gradually. Dev note: cells and
+deploys are new-rolled every garage visit, so re-enter the garage for a
+new map.
+
+### Known jank / honesty
+
+- Still zero executions — this is the biggest untested batch yet, and the
+  radar drawing code (custom `_draw`) is brand-new surface area.
+- Deploy candidates are a fixed pool of 8 positions (the *weather* is
+  fully random; the terrain isn't procedural yet). Full map generation is
+  a bigger lift — flagged as a possible Phase 5.6.
+- The navigator's radar being passenger-only is a deliberate role hook;
+  solo drivers fly blind between cells (the sky darkening is the tell).
+  If that feels bad in testing we can give the driver a dash-mounted
+  mini version.
+- Cell count × suction loops = more host physics work; if a 5-cell
+  forecast chugs, cap concurrent active cells in balance later.

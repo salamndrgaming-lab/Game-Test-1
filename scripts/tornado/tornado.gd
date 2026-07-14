@@ -1,14 +1,23 @@
 extends Node3D
-## The tornado. Host-simulated: wanders on a noise-driven path, ramps
-## F1 -> F4 over the run, and applies the three-ring suction model:
+## One storm cell from the forecast. The run manager instantiates one of
+## these per forecast cell; it activates at t_start, ramps up to its peak
+## F-rating, holds, ramps out, and dies — several can be live at once.
+## Host-simulated: noise-driven wander leashed to the cell center, plus the
+## three-ring suction model:
 ##   outer  (200m): loose props slide toward the funnel, wind ramps
-##   middle  (80m): players shoved, light props airborne, van pushed
+##   middle  (80m): players shoved, light props airborne, van pushed, hats gone
 ##   inner   (25m): players ragdoll and orbit up the funnel, van can fly
 ## Clients only run visuals/audio from the synced position + intensity.
 
-var intensity := 1.0  # synced; the F rating (1..4)
-var active := true  # synced
-var dissipating := false  # host-side flag set by the run manager
+# Cell parameters, set by the run manager before add_child (from Game.forecast).
+var cell_index := 0
+var cell_center := Vector2.ZERO
+var peak := 2.0
+var t_start := 0.0
+var duration := 240.0
+
+var intensity := 0.0  # synced
+var active := false  # synced
 
 var _elapsed := 0.0
 var _noise := FastNoiseLite.new()
@@ -20,25 +29,28 @@ var _noise := FastNoiseLite.new()
 
 func _ready() -> void:
 	add_to_group("tornado")
-	_noise.seed = 7
+	_noise.seed = 7 + cell_index
 	wind.finished.connect(wind.play)
 	wind.play()
 
 func _physics_process(delta: float) -> void:
-	if not multiplayer.is_server() or not active:
+	if not multiplayer.is_server():
 		return
 	_elapsed += delta
-	if dissipating:
-		intensity = maxf(intensity - delta * 0.25, 0.0)
-		if intensity <= 0.05:
+	var t := _elapsed - t_start
+	if t < 0.0 or t > duration:
+		if active:
 			active = false
-	else:
-		# The garage contract caps the F-rating: F1 stays a dust devil,
-		# F4 ramps all the way to The Finger of God.
-		var cap := float(clampi(Game.contract_tier, 1, 4))
-		intensity = 1.0 + (cap - 1.0) * clampf(_elapsed / Game.balance.run_chase_seconds, 0.0, 1.0)
+			intensity = 0.0
+		return
+	active = true
+	intensity = maxf(peak * _envelope(t / duration), 0.15)
 	_wander(delta)
 	_apply_suction(delta)
+
+## Ramp in over the first quarter, hold, ramp out over the last quarter.
+func _envelope(u: float) -> float:
+	return clampf(minf(u / 0.25, (1.0 - u) / 0.25), 0.0, 1.0)
 
 func _process(delta: float) -> void:
 	# Visuals/audio on every peer from synced state.
@@ -63,9 +75,10 @@ func _process(delta: float) -> void:
 func _wander(delta: float) -> void:
 	var ang := _noise.get_noise_1d(_elapsed * 3.0) * TAU
 	var dir := Vector3(sin(ang), 0.0, cos(ang))
-	if global_position.length() > 420.0:
-		# Steer back toward the map interior near the edges.
-		dir = (dir - global_position.normalized() * 1.2).normalized()
+	var from_center := Vector3(global_position.x - cell_center.x, 0.0, global_position.z - cell_center.y)
+	if from_center.length() > Game.balance.tornado_leash_radius:
+		# Steer back toward the cell's home turf.
+		dir = (dir - from_center.normalized() * 1.3).normalized()
 	global_position += dir * Game.balance.tornado_wander_speed * delta * (0.7 + intensity * 0.15)
 	global_position.y = 0.0
 

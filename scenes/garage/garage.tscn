@@ -1,8 +1,9 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/garage/garage.gd" id="1_gar"]
 [ext_resource type="Script" path="res://scripts/garage/garage_station.gd" id="2_sta"]
 [ext_resource type="Script" path="res://scripts/garage/garage_shop.gd" id="3_shop"]
+[ext_resource type="Script" path="res://scripts/garage/garage_radar.gd" id="6_radar"]
 [ext_resource type="PackedScene" path="res://scenes/van/van.tscn" id="4_van"]
 [ext_resource type="PackedScene" path="res://scenes/props/traffic_cone.tscn" id="5_cone"]
 
@@ -106,21 +107,21 @@ font_size = 96
 
 [node name="Stations" type="Node3D" parent="."]
 
-[node name="Contracts" type="Node3D" parent="Stations" groups=["station"]]
+[node name="Radar" type="Node3D" parent="Stations" groups=["station"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -9)
 script = ExtResource("2_sta")
-station_id = "contracts"
+station_id = "radar"
 
-[node name="Mesh" type="MeshInstance3D" parent="Stations/Contracts"]
+[node name="Mesh" type="MeshInstance3D" parent="Stations/Radar"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
 mesh = SubResource("BoxMesh_station")
 
-[node name="Title" type="Label3D" parent="Stations/Contracts"]
+[node name="Title" type="Label3D" parent="Stations/Radar"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
 billboard = 1
-text = "CONTRACTS BOARD"
+text = "WEATHER RADAR — E to review"
 
-[node name="Info" type="Label3D" parent="Stations/Contracts"]
+[node name="Info" type="Label3D" parent="Stations/Radar"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
 billboard = 1
 modulate = Color(1, 0.85, 0.4, 1)
@@ -193,3 +194,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.2, 3)
 
 [node name="ShopUI" type="CanvasLayer" parent="."]
 script = ExtResource("3_shop")
+
+[node name="RadarUI" type="CanvasLayer" parent="."]
+script = ExtResource("6_radar")

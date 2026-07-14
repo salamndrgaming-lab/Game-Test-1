@@ -25,7 +25,11 @@ var state: int = State.MENU
 var crew_money := 0
 var upgrades := {}  # id -> true
 var van_paint := 0
-var contract_tier := 1
+
+# Tomorrow's weather (host-generated each garage visit, synced):
+# { "heavy": {x,z}, "cells": [{x,z,peak,t_start,duration}],
+#   "deploys": [{x,z,danger,label}], "selected": int }
+var forecast := {}
 
 # Local-only settings.
 var settings := {"volume": 1.0, "sensitivity": 1.0, "push_to_talk": false}
@@ -65,7 +69,9 @@ func _on_session_ended() -> void:
 
 func _on_peer_connected(id: int) -> void:
 	if multiplayer.is_server():
-		sync_progress.rpc_id(id, crew_money, upgrades, van_paint, contract_tier)
+		sync_progress.rpc_id(id, crew_money, upgrades, van_paint)
+		if not forecast.is_empty():
+			sync_forecast.rpc_id(id, forecast)
 
 # --- Networked state / progression --------------------------------------------
 
@@ -75,16 +81,59 @@ func net_change_state(next: int) -> void:
 	change_state(next)
 
 @rpc("authority", "call_local", "reliable")
-func sync_progress(money: int, upg: Dictionary, paint: int, tier: int) -> void:
+func sync_progress(money: int, upg: Dictionary, paint: int) -> void:
 	crew_money = money
 	upgrades = upg
 	van_paint = paint
-	contract_tier = tier
 
 ## Host: push progression to everyone and persist it.
 func broadcast_progress() -> void:
-	sync_progress.rpc(crew_money, upgrades, van_paint, contract_tier)
+	sync_progress.rpc(crew_money, upgrades, van_paint)
 	save_progress()
+
+# --- Weather forecast ------------------------------------------------------------
+
+## Deploy candidates around the map edge/midfield (HQ corner excluded).
+const DEPLOY_CANDIDATES := [
+	Vector2(-380, -380), Vector2(0, -400), Vector2(380, -380), Vector2(-400, 0),
+	Vector2(-380, 300), Vector2(0, 300), Vector2(300, 100), Vector2(120, -150),
+]
+
+## Host: roll tomorrow's weather. Cells cluster stronger near a random
+## "heavy area"; three deploy points spanning mild -> deathwish severity.
+func generate_forecast() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var heavy := Vector2(rng.randf_range(-350, 350), rng.randf_range(-400, 200))
+	var chase: float = balance.run_chase_seconds
+	var cells: Array = []
+	for i in rng.randi_range(3, 5):
+		var pos := Vector2(rng.randf_range(-420, 380), rng.randf_range(-420, 300))
+		var peak := clampf(4.3 - pos.distance_to(heavy) / 220.0 + rng.randf_range(-0.3, 0.3), 1.0, 4.0)
+		var t_start := 0.0 if i == 0 else rng.randf_range(0.15, 0.55) * chase
+		var duration := clampf(rng.randf_range(0.35, 0.6) * chase, 60.0, chase - t_start)
+		cells.append({"x": pos.x, "z": pos.y, "peak": peak, "t_start": t_start, "duration": duration})
+	var scored: Array = []
+	for cand in DEPLOY_CANDIDATES:
+		var danger := 0.0
+		for c in cells:
+			var d: float = cand.distance_to(Vector2(c.x, c.z))
+			danger = maxf(danger, float(c.peak) * clampf(1.0 - d / 500.0, 0.15, 1.0))
+		scored.append({"x": cand.x, "z": cand.y, "danger": danger})
+	scored.sort_custom(func(a, b): return a.danger < b.danger)
+	var picks: Array = [scored[0], scored[int(scored.size() / 2.0)], scored[scored.size() - 1]]
+	for p in picks:
+		var danger := float(p.danger)
+		p["label"] = "MILD" if danger < 1.3 else ("SPICY" if danger < 2.6 else "DEATHWISH")
+	forecast = {
+		"heavy": {"x": heavy.x, "z": heavy.y},
+		"cells": cells, "deploys": picks, "selected": 1,
+	}
+	sync_forecast.rpc(forecast)
+
+@rpc("authority", "call_local", "reliable")
+func sync_forecast(f: Dictionary) -> void:
+	forecast = f
 
 @rpc("authority", "call_local", "reliable")
 func set_run_results(results: Array, views: int, money: int, title: String) -> void:

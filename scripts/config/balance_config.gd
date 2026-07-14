@@ -38,7 +38,14 @@ extends Resource
 	"cam_stabilizer": 300,
 	"cam_battery": 200,
 }
-@export var contract_multipliers: Array[float] = [1.0, 1.6, 2.6, 4.0]
+@export_group("Weather")  # Phase 5.5 — radar/forecast system
+@export var tornado_leash_radius := 160.0  # cells wander near their center
+@export var home_radius := 18.0  # HQ driveway wifi range
+@export var upload_rate := 250.0  # footage pts/s while uploading at home
+@export var mark_duration := 45.0  # navigator's storm call lifetime
+@export var called_bonus := 1.25  # filming a called cell
+@export var spotter_cut := 0.1  # navigator's share of called-cell footage
+@export var driver_cut := 0.2  # driver's share of footage filmed from their van
 
 @export_group("Camcorder")
 @export var camera_battery_seconds := 90.0

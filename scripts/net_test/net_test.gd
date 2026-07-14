@@ -44,4 +44,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				SteamManager.invite_overlay()
 			KEY_ENTER:
 				if multiplayer.is_server():
+					# Roll weather first: sync_forecast and net_change_state
+					# share the Game node's reliable channel, so clients get
+					# the forecast before they load the run scene.
+					if Game.forecast.is_empty():
+						Game.generate_forecast()
 					Game.net_change_state.rpc(Game.State.STORM_RUN)

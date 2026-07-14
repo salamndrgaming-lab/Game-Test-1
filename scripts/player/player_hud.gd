@@ -14,6 +14,7 @@ var battery_bar: ProgressBar
 var score_label: Label
 var hp_label: Label
 var dead_label: Label
+var radar: RadarView
 var wheel: PanelContainer
 var click: AudioStreamPlayer
 
@@ -31,6 +32,17 @@ func _ready() -> void:
 	_build_viewfinder()
 	_build_wheel()
 	_build_status()
+	radar = RadarView.new()
+	radar.live = true
+	radar.anchor_left = 1.0
+	radar.anchor_right = 1.0
+	radar.offset_left = -372.0
+	radar.offset_right = -16.0
+	radar.offset_top = 64.0
+	radar.offset_bottom = 420.0
+	radar.visible = false
+	radar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(radar)
 
 func _build_status() -> void:
 	hp_label = Label.new()
@@ -81,6 +93,12 @@ func _update_film(delta: float) -> void:
 		score_label.text = "FOOTAGE %05d   banked %d" % [int(player.footage), int(player.banked)]
 	hp_label.text = "HP %d" % int(player.hp)
 	dead_label.visible = player.dead
+	# Navigator's live radar: hold TAB while riding the passenger seat.
+	radar.visible = Input.is_action_pressed("radar") and _is_passenger()
+
+func _is_passenger() -> bool:
+	var v := player._my_van()
+	return v != null and int(v.seats.get("passenger", -1)) == player.peer_id()
 
 func _build_viewfinder() -> void:
 	viewfinder = Control.new()

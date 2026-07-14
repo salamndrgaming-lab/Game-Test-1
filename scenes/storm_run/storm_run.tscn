@@ -1,7 +1,6 @@
-[gd_scene load_steps=31 format=3]
+[gd_scene load_steps=32 format=3]
 
 [ext_resource type="Script" path="res://scripts/storm_run/storm_run.gd" id="1_run"]
-[ext_resource type="PackedScene" path="res://scenes/tornado/tornado.tscn" id="2_tor"]
 [ext_resource type="PackedScene" path="res://scenes/van/van.tscn" id="3_van"]
 [ext_resource type="PackedScene" path="res://scenes/props/traffic_cone.tscn" id="4_cone"]
 [ext_resource type="PackedScene" path="res://scenes/props/crate.tscn" id="5_crate"]
@@ -80,15 +79,19 @@ albedo_color = Color(0.25, 0.42, 0.14, 1)
 material = SubResource("Mat_corn")
 size = Vector2(200, 200)
 
-[sub_resource type="StandardMaterial3D" id="Mat_beacon"]
-albedo_color = Color(0.2, 0.9, 0.4, 1)
-emission_enabled = true
-emission = Color(0.2, 0.9, 0.4, 1)
-emission_energy_multiplier = 1.5
+[sub_resource type="BoxMesh" id="BoxMesh_home"]
+material = SubResource("Mat_bld")
+size = Vector3(14, 6, 10)
 
-[sub_resource type="BoxMesh" id="BoxMesh_beacon"]
-material = SubResource("Mat_beacon")
-size = Vector3(2, 80, 2)
+[sub_resource type="BoxShape3D" id="BoxShape_home"]
+size = Vector3(14, 6, 10)
+
+[sub_resource type="StandardMaterial3D" id="Mat_drive"]
+albedo_color = Color(0.32, 0.32, 0.34, 1)
+
+[sub_resource type="PlaneMesh" id="Plane_drive"]
+material = SubResource("Mat_drive")
+size = Vector2(26, 26)
 
 [sub_resource type="SceneReplicationConfig" id="SRC_run"]
 properties/0/path = NodePath(".:run_state")
@@ -97,6 +100,9 @@ properties/0/replication_mode = 1
 properties/1/path = NodePath(".:time_left")
 properties/1/spawn = true
 properties/1/replication_mode = 1
+properties/2/path = NodePath(".:called_cell")
+properties/2/spawn = true
+properties/2/replication_mode = 1
 
 [node name="StormRun" type="Node3D"]
 script = ExtResource("1_run")
@@ -193,12 +199,28 @@ shape = SubResource("BoxShape_trailer")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 0.05, 200)
 mesh = SubResource("Plane_corn")
 
-[node name="Extraction" type="Node3D" parent="."]
+[node name="Home" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 450, 0, 450)
 
-[node name="Beacon" type="MeshInstance3D" parent="Extraction"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 40, 0)
-mesh = SubResource("BoxMesh_beacon")
+[node name="Building" type="StaticBody3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -12)
+
+[node name="Mesh" type="MeshInstance3D" parent="Home/Building"]
+mesh = SubResource("BoxMesh_home")
+
+[node name="Shape" type="CollisionShape3D" parent="Home/Building"]
+shape = SubResource("BoxShape_home")
+
+[node name="Driveway" type="MeshInstance3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("Plane_drive")
+
+[node name="Sign" type="Label3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7.5, -12)
+billboard = 1
+font_size = 72
+text = "CHASER HQ
+footage uploads in the driveway"
 
 [node name="Planks" type="Node3D" parent="."]
 
@@ -237,8 +259,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -305, 0.5, 197)
 [node name="Van" parent="." instance=ExtResource("3_van")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 445, 0.1, 435)
 
-[node name="Tornado" parent="." instance=ExtResource("2_tor")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -450, 0, -450)
+[node name="Cells" type="Node3D" parent="."]
 
 [node name="Players" type="Node3D" parent="."]
 

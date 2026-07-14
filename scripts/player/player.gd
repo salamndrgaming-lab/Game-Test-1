@@ -25,7 +25,7 @@ var filming := false
 var hp := 100.0
 var dead := false
 var footage := 0.0  # unsaved points — forfeited on death unless recovered
-var banked := 0.0  # uploaded at extraction
+var banked := 0.0  # uploaded over the HQ garage wifi
 var hat_id := 0  # cosmetic; the wind WILL take it
 
 # Host-side run stats.
@@ -133,6 +133,15 @@ func _gather_van_input() -> void:
 			v.glovebox_from(peer_id())
 		else:
 			v._request_glovebox.rpc_id(1)
+	# Navigator role: F calls the strongest live cell (host verifies you're
+	# actually in the passenger seat).
+	if Input.is_action_just_pressed("mark"):
+		var mgr := get_tree().get_first_node_in_group("run_manager")
+		if mgr != null:
+			if multiplayer.is_server():
+				mgr.mark_from(peer_id())
+			else:
+				mgr._request_mark.rpc_id(1)
 
 ## On the host `van` is authoritative; clients find their van via the synced
 ## seats dictionary.
@@ -228,7 +237,7 @@ func _do_interact() -> void:
 		if hat_mgr != null:
 			hat_mgr.despawn_pickup(hat)
 		return
-	# Garage stations (contracts board, shop bench, paint, hats, door).
+	# Garage stations (weather radar, shop bench, paint, hats, door).
 	var station := _nearest_in_group("station", 2.6)
 	if station != null:
 		station.use(self)

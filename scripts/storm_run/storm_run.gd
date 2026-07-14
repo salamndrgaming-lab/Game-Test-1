@@ -1,36 +1,71 @@
 extends PlayerSpawnManager
-## Run manager: storm spawns at the map edge -> chase -> storm dissipates ->
-## drive to extraction -> footage uploads -> RESULTS. Host drives the state
-## machine; run_state/time_left sync to clients. Contract tier (garage board)
-## caps the storm's F-rating and multiplies the payout.
+## Run manager. The forecast (rolled in the garage) drives everything:
+## storm cells spawn at their forecast positions and activate on their own
+## timers, the crew deploys at the chosen deploy point with the van, and
+## when the last cell blows out everyone drives HOME — footage uploads over
+## the HQ garage wifi while you sit in the driveway. No beams.
 
-enum RunState { CHASE, DISSIPATE, EXTRACT, DONE }
+enum RunState { CHASE, HEAD_HOME, DONE }
 
+const TORNADO_SCENE := preload("res://scenes/tornado/tornado.tscn")
 const PICKUP_SCENE := preload("res://scenes/props/camera_pickup.tscn")
 const HAT_SCENE := preload("res://scenes/props/hat_prop.tscn")
-const EXTRACT_RADIUS := 15.0
 
 var run_state: int = RunState.CHASE  # synced
 var time_left := 0.0  # synced
+var called_cell := -1  # synced; the navigator's current storm call
+var called_by := 0  # host-side: who made the call (gets the spotter cut)
 
+var _elapsed := 0.0
+var _chase_end := 0.0
+var _call_expires := 0.0
 var _pickup_seq := 0
 var _van_flew := false
 var _deaths := 0
 
-@onready var tornado: Node3D = $Tornado
-@onready var extraction: Node3D = $Extraction
+@onready var home: Node3D = $Home
 @onready var sun: DirectionalLight3D = $Sun
 @onready var run_label: Label = $UI/RunLabel
 
 func _ready() -> void:
-	super._ready()
 	add_to_group("run_manager")
 	$Sun.rotation_degrees = Vector3(-55.0, -30.0, 0.0)
+	if multiplayer.is_server() and Game.forecast.is_empty():
+		Game.generate_forecast()  # dev fallback; the garage normally rolls it
+	_spawn_cells()
+	var dep := _deploy()
+	$Van.position = Vector3(dep.x, 0.1, dep.y - 8.0)
 	if multiplayer.is_server():
-		time_left = Game.balance.run_chase_seconds
+		for c in Game.forecast.get("cells", []):
+			_chase_end = maxf(_chase_end, float(c.t_start) + float(c.duration))
+		time_left = _chase_end
+	super._ready()
+
+func _spawn_cells() -> void:
+	# Deterministic on every peer from the synced forecast — no spawn RPCs.
+	var cells: Array = Game.forecast.get("cells", [])
+	for i in cells.size():
+		var c: Dictionary = cells[i]
+		var tor := TORNADO_SCENE.instantiate()
+		tor.name = "Cell%d" % i
+		tor.cell_index = i
+		tor.cell_center = Vector2(float(c.x), float(c.z))
+		tor.peak = float(c.peak)
+		tor.t_start = float(c.t_start)
+		tor.duration = float(c.duration)
+		tor.position = Vector3(float(c.x), 0.0, float(c.z))
+		$Cells.add_child(tor)
+
+func _deploy() -> Vector2:
+	var deploys: Array = Game.forecast.get("deploys", [])
+	if deploys.is_empty():
+		return Vector2(438.0, 442.0)
+	var d: Dictionary = deploys[clampi(int(Game.forecast.get("selected", 0)), 0, deploys.size() - 1)]
+	return Vector2(float(d.x), float(d.z))
 
 func _spawn_pos(idx: int) -> Vector3:
-	return Vector3(438.0 + 2.5 * idx, 0.2, 442.0)
+	var dep := _deploy()
+	return Vector3(dep.x + 2.5 * idx, 0.2, dep.y + 3.0)
 
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server():
@@ -47,63 +82,95 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _process(_delta: float) -> void:
-	var inten: float = tornado.intensity if tornado.active else 0.0
-	# Sky darkens as the storm intensifies (telegraphs the F-rating).
-	sun.light_energy = lerpf(1.2, 0.3, inten / 4.0)
-	run_label.text = _run_text(inten)
+	var strongest := 0.0
+	var live := 0
+	for tor in get_tree().get_nodes_in_group("tornado"):
+		if tor.active:
+			live += 1
+			strongest = maxf(strongest, tor.intensity)
+	# Sky darkens with the strongest live cell.
+	sun.light_energy = lerpf(1.2, 0.3, strongest / 4.0)
+	run_label.text = _run_text(live, strongest)
 
-func _run_text(inten: float) -> String:
+func _run_text(live: int, strongest: float) -> String:
 	match run_state:
 		RunState.CHASE:
-			return "STORM: F%d    %d:%02d    hold C to film it" \
-					% [clampi(int(inten), 1, 4), int(time_left / 60.0), int(time_left) % 60]
-		RunState.DISSIPATE:
-			return "The storm is collapsing..."
-		RunState.EXTRACT:
-			return "GET TO EXTRACTION — the beacon (%ds)" % int(time_left)
+			var line := "%d:%02d" % [int(time_left / 60.0), int(time_left) % 60]
+			if live == 0:
+				return "STORM WATCH — quiet for now, check the radar (%s)" % line
+			return "STORM WATCH: %d cell(s) live — strongest F%d — %s — hold C to film" \
+					% [live, clampi(int(strongest), 1, 4), line]
+		RunState.HEAD_HOME:
+			return "Storms are done — head home, footage uploads in the HQ driveway (%ds)" % int(time_left)
 		_:
-			return "Uploading..."
+			return "Upload complete."
 
 # --- Host run state ---------------------------------------------------------
 
 func _update_run(delta: float) -> void:
-	time_left = maxf(time_left - delta, 0.0)
+	_elapsed += delta
+	if called_cell != -1 and _elapsed > _call_expires:
+		called_cell = -1
 	match run_state:
 		RunState.CHASE:
+			time_left = maxf(_chase_end - _elapsed, 0.0)
 			if time_left <= 0.0:
-				run_state = RunState.DISSIPATE
-				time_left = 20.0
-				tornado.dissipating = true
-		RunState.DISSIPATE:
-			if time_left <= 0.0:
-				run_state = RunState.EXTRACT
+				run_state = RunState.HEAD_HOME
 				time_left = Game.balance.run_extract_seconds
-		RunState.EXTRACT:
-			_bank_players_in_zone()
-			if time_left <= 0.0 or _all_alive_at_extraction():
+		RunState.HEAD_HOME:
+			time_left = maxf(time_left - delta, 0.0)
+			_upload_players(delta)
+			if time_left <= 0.0 or _everyone_uploaded():
 				_finish_run()
 		RunState.DONE:
 			pass
 
-func _bank_players_in_zone() -> void:
+## Footage transfers over the garage wifi while you're in the driveway.
+func _upload_players(delta: float) -> void:
 	for p in get_tree().get_nodes_in_group("players"):
 		if p.dead or p.footage <= 0.0:
 			continue
-		if p.global_position.distance_to(extraction.global_position) < EXTRACT_RADIUS:
-			p.banked += p.footage
-			p.footage = 0.0
+		if p.global_position.distance_to(home.global_position) < Game.balance.home_radius:
+			var amount: float = minf(Game.balance.upload_rate * delta, p.footage)
+			p.footage -= amount
+			p.banked += amount
 
-func _all_alive_at_extraction() -> bool:
+func _everyone_uploaded() -> bool:
 	for p in get_tree().get_nodes_in_group("players"):
 		if p.dead:
 			continue
-		if p.global_position.distance_to(extraction.global_position) > EXTRACT_RADIUS:
+		if p.footage > 0.0 \
+				or p.global_position.distance_to(home.global_position) > Game.balance.home_radius:
 			return false
 	return true
 
 ## Called by player_health on the host when someone eats dirt.
 func note_death() -> void:
 	_deaths += 1
+
+# --- The navigator's storm call (passenger seat role) --------------------------
+
+@rpc("any_peer", "call_remote", "reliable")
+func _request_mark() -> void:
+	if multiplayer.is_server():
+		mark_from(multiplayer.get_remote_sender_id())
+
+func mark_from(pid: int) -> void:  # host
+	var is_navigator := false
+	for v in get_tree().get_nodes_in_group("vans"):
+		if int(v.seats.get("passenger", -1)) == pid:
+			is_navigator = true
+	if not is_navigator:
+		return
+	var best: Node = null
+	for tor in get_tree().get_nodes_in_group("tornado"):
+		if tor.active and (best == null or tor.intensity > best.intensity):
+			best = tor
+	if best == null:
+		return
+	called_cell = best.cell_index
+	called_by = pid
+	_call_expires = _elapsed + Game.balance.mark_duration
 
 func _finish_run() -> void:
 	run_state = RunState.DONE
@@ -128,9 +195,8 @@ func _finish_run() -> void:
 		title = "The Time Everybody Kept Dying"
 	if _van_flew:
 		title = "The Time The Van Learned To Fly"
-	var mult: float = Game.balance.contract_multipliers[clampi(Game.contract_tier - 1, 0, 3)]
 	var views := int(total * Game.balance.views_per_point)
-	var money := int(views / 100.0 * Game.balance.payout_per_100_views * mult)
+	var money := int(views / 100.0 * Game.balance.payout_per_100_views)
 	Game.set_run_results.rpc(results, views, money, title)
 	Game.net_change_state.rpc(Game.State.RESULTS)
 
